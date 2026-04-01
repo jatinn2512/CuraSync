@@ -11,16 +11,17 @@ const Footer = () => {
   const navigate = useNavigate();
 
   return (
-    <footer className="border-t border-border bg-card/50 py-16">
+    <footer className="relative border-t border-border/70 bg-card/45 py-16 backdrop-blur-2xl">
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
       <div className="container">
         <div className="mb-12 grid gap-10 md:grid-cols-4">
           <div>
             <button
               type="button"
-              className="mb-4 flex items-center gap-2 font-display text-lg font-bold"
+              className="group mb-4 flex items-center gap-2.5 font-display text-lg font-bold"
               onClick={() => navigate("/")}
             >
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg gradient-bg-primary">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl transition-transform duration-300 group-hover:scale-105 glow-primary gradient-bg-primary">
                 <Activity className="h-5 w-5 text-primary-foreground" />
               </div>
               AI Health Companion
@@ -32,11 +33,11 @@ const Footer = () => {
 
           {Object.entries(footerLinks).map(([heading, links]) => (
             <div key={heading}>
-              <h4 className="mb-4 text-sm font-semibold">{heading}</h4>
+              <h4 className="mb-4 text-sm font-semibold tracking-wide">{heading}</h4>
               <ul className="space-y-2.5">
                 {links.map((link) => (
                   <li key={link}>
-                    <a href="#" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
+                    <a href="#" className="text-sm text-muted-foreground transition-colors hover:text-primary">
                       {link}
                     </a>
                   </li>
@@ -52,7 +53,7 @@ const Footer = () => {
           </p>
           <div className="flex gap-4">
             {["Twitter", "LinkedIn", "GitHub"].map((social) => (
-              <a key={social} href="#" className="text-xs text-muted-foreground transition-colors hover:text-foreground">
+              <a key={social} href="#" className="text-xs text-muted-foreground transition-colors hover:text-primary">
                 {social}
               </a>
             ))}
