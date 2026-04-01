@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { AlertTriangle, ArrowLeft, Home } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/Button";
+import ThemeToggle from "@/components/ThemeToggle";
 
 const NotFound = () => {
   const location = useLocation();
@@ -15,6 +16,9 @@ const NotFound = () => {
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden gradient-bg-hero px-4">
       <div className="absolute left-6 top-14 h-64 w-64 rounded-full bg-primary/15 blur-3xl" />
       <div className="absolute bottom-10 right-6 h-80 w-80 rounded-full bg-accent/15 blur-3xl" />
+      <div className="absolute right-5 top-5 z-20">
+        <ThemeToggle compact />
+      </div>
 
       <div className="relative z-10 w-full max-w-xl rounded-3xl p-8 text-center glass-card sm:p-10">
         <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl gradient-bg-primary">
