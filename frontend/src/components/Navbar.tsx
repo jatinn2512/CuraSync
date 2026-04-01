@@ -1,81 +1,124 @@
 import { useState } from "react";
-import { Menu, X, Activity } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
+import { Activity, Menu, X } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/Button";
 
 const navLinks = [
-  { label: "Features", href: "#features" },
-  { label: "How It Works", href: "#how-it-works" },
-  { label: "Benefits", href: "#benefits" },
-  { label: "Testimonials", href: "#testimonials" },
+  { label: "Features", href: "#features", section: "features" },
+  { label: "How It Works", href: "#how-it-works", section: "how-it-works" },
+  { label: "Benefits", href: "#benefits", section: "benefits" },
+  { label: "Testimonials", href: "#testimonials", section: "testimonials" },
 ];
 
-const Navbar = () => {
+interface NavbarProps {
+  onSectionClick: (section: string) => void;
+}
+
+const Navbar = ({ onSectionClick }: NavbarProps) => {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const navigate = useNavigate();
+
+  const handleSectionClick = (section: string) => {
+    setMobileOpen(false);
+    onSectionClick(section);
+  };
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 glass-card border-b border-border/40">
-      <div className="container flex items-center justify-between h-16">
-        <a href="#" className="flex items-center gap-2 font-display font-bold text-lg">
-          <div className="w-8 h-8 rounded-lg gradient-bg-primary flex items-center justify-center">
-            <Activity className="w-5 h-5 text-primary-foreground" />
+    <nav className="fixed left-0 right-0 top-0 z-50 border-b border-border/40 glass-card">
+      <div className="container flex h-16 items-center justify-between">
+        <button
+          type="button"
+          className="flex items-center gap-2 font-display text-lg font-bold"
+          onClick={() => navigate("/")}
+        >
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg gradient-bg-primary">
+            <Activity className="h-5 w-5 text-primary-foreground" />
           </div>
           <span>AI Health Companion</span>
-        </a>
+        </button>
 
-        {/* Desktop links */}
-        <div className="hidden md:flex items-center gap-8">
-          {navLinks.map((l) => (
+        <div className="hidden items-center gap-8 md:flex">
+          {navLinks.map((link) => (
             <a
-              key={l.href}
-              href={l.href}
-              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+              key={link.href}
+              href={link.href}
+              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+              onClick={(event) => {
+                event.preventDefault();
+                handleSectionClick(link.section);
+              }}
             >
-              {l.label}
+              {link.label}
             </a>
           ))}
         </div>
 
-        <div className="hidden md:flex items-center gap-3">
-          <Button variant="ghost" size="sm">Log In</Button>
-          <Button size="sm" className="gradient-bg-primary text-primary-foreground border-0">
+        <div className="hidden items-center gap-3 md:flex">
+          <Button variant="ghost" size="sm" onClick={() => navigate("/login")}>
+            Log In
+          </Button>
+          <Button
+            size="sm"
+            className="border-0 gradient-bg-primary text-primary-foreground"
+            onClick={() => navigate("/login")}
+          >
             Get Started
           </Button>
         </div>
 
-        {/* Mobile toggle */}
         <button
-          className="md:hidden p-2 text-foreground"
-          onClick={() => setMobileOpen(!mobileOpen)}
+          type="button"
+          className="p-2 text-foreground md:hidden"
+          onClick={() => setMobileOpen((open) => !open)}
           aria-label="Toggle menu"
         >
           {mobileOpen ? <X size={22} /> : <Menu size={22} />}
         </button>
       </div>
 
-      {/* Mobile menu */}
       <AnimatePresence>
         {mobileOpen && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className="md:hidden overflow-hidden glass-card border-t border-border/40"
+            className="overflow-hidden border-t border-border/40 glass-card md:hidden"
           >
-            <div className="container py-4 flex flex-col gap-3">
-              {navLinks.map((l) => (
+            <div className="container flex flex-col gap-3 py-4">
+              {navLinks.map((link) => (
                 <a
-                  key={l.href}
-                  href={l.href}
-                  className="py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-                  onClick={() => setMobileOpen(false)}
+                  key={link.href}
+                  href={link.href}
+                  className="py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    handleSectionClick(link.section);
+                  }}
                 >
-                  {l.label}
+                  {link.label}
                 </a>
               ))}
               <div className="flex gap-3 pt-2">
-                <Button variant="ghost" size="sm" className="flex-1">Log In</Button>
-                <Button size="sm" className="flex-1 gradient-bg-primary text-primary-foreground border-0">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="flex-1"
+                  onClick={() => {
+                    setMobileOpen(false);
+                    navigate("/login");
+                  }}
+                >
+                  Log In
+                </Button>
+                <Button
+                  size="sm"
+                  className="flex-1 border-0 gradient-bg-primary text-primary-foreground"
+                  onClick={() => {
+                    setMobileOpen(false);
+                    navigate("/login");
+                  }}
+                >
                   Get Started
                 </Button>
               </div>
