@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Activity, Menu, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/Button";
+import ThemeToggle from "@/components/ThemeToggle";
 
 const navLinks = [
   { label: "Features", href: "#features", section: "features" },
@@ -25,25 +26,26 @@ const Navbar = ({ onSectionClick }: NavbarProps) => {
   };
 
   return (
-    <nav className="fixed left-0 right-0 top-0 z-50 border-b border-border/40 glass-card">
+    <nav className="fixed left-0 right-0 top-0 z-50 border-b border-border/50 bg-card/60 backdrop-blur-2xl">
+      <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-primary/35 to-transparent" />
       <div className="container flex h-16 items-center justify-between">
         <button
           type="button"
-          className="flex items-center gap-2 font-display text-lg font-bold"
+          className="group flex items-center gap-2.5 font-display text-lg font-bold"
           onClick={() => navigate("/")}
         >
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg gradient-bg-primary">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl transition-transform duration-300 group-hover:scale-105 glow-primary gradient-bg-primary">
             <Activity className="h-5 w-5 text-primary-foreground" />
           </div>
           <span>AI Health Companion</span>
         </button>
 
-        <div className="hidden items-center gap-8 md:flex">
+        <div className="hidden items-center gap-7 md:flex">
           {navLinks.map((link) => (
             <a
               key={link.href}
               href={link.href}
-              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+              className="relative text-sm font-semibold text-muted-foreground transition-colors hover:text-foreground"
               onClick={(event) => {
                 event.preventDefault();
                 handleSectionClick(link.section);
@@ -54,7 +56,8 @@ const Navbar = ({ onSectionClick }: NavbarProps) => {
           ))}
         </div>
 
-        <div className="hidden items-center gap-3 md:flex">
+        <div className="hidden items-center gap-2 md:flex">
+          <ThemeToggle compact />
           <Button variant="ghost" size="sm" onClick={() => navigate("/login")}>
             Log In
           </Button>
@@ -69,7 +72,7 @@ const Navbar = ({ onSectionClick }: NavbarProps) => {
 
         <button
           type="button"
-          className="p-2 text-foreground md:hidden"
+          className="rounded-xl border border-border/55 bg-card/70 p-2 text-foreground md:hidden"
           onClick={() => setMobileOpen((open) => !open)}
           aria-label="Toggle menu"
         >
@@ -80,10 +83,11 @@ const Navbar = ({ onSectionClick }: NavbarProps) => {
       <AnimatePresence>
         {mobileOpen && (
           <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden border-t border-border/40 glass-card md:hidden"
+            initial={{ height: 0, opacity: 0, y: -8 }}
+            animate={{ height: "auto", opacity: 1, y: 0 }}
+            exit={{ height: 0, opacity: 0, y: -8 }}
+            transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+            className="overflow-hidden border-t border-border/40 bg-card/90 backdrop-blur-2xl md:hidden"
           >
             <div className="container flex flex-col gap-3 py-4">
               {navLinks.map((link) => (
@@ -99,7 +103,8 @@ const Navbar = ({ onSectionClick }: NavbarProps) => {
                   {link.label}
                 </a>
               ))}
-              <div className="flex gap-3 pt-2">
+              <ThemeToggle className="w-full justify-start" showLabel />
+              <div className="flex gap-3 pt-1">
                 <Button
                   variant="ghost"
                   size="sm"
