@@ -91,7 +91,7 @@ const AppLayout = ({ title, subtitle, children }: AppLayoutProps) => {
           </div>
 
           <section className="relative overflow-hidden rounded-[1.75rem] p-6 glass-card sm:p-8">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_10%,hsl(var(--primary)/0.18),transparent_42%),radial-gradient(circle_at_80%_20%,hsl(var(--accent)/0.16),transparent_44%)]" />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_10%,hsl(var(--primary)/0.18),transparent_42%),radial-gradient(circle_at_80%_20%,hsl(var(--accent)/0.16),transparent_44%)] dark:bg-none" />
             <div className="relative z-10">
               <p className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
                 <Sparkles className="h-3.5 w-3.5" />
