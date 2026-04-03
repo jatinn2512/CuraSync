@@ -6,14 +6,16 @@ import Footer from "@/components/Footer";
 import Sidebar from "@/components/Sidebar";
 import { Button } from "@/components/Button";
 import ThemeToggle from "@/components/ThemeToggle";
+import { cn } from "@/lib/utils";
 
 interface AppLayoutProps {
   title: string;
-  subtitle: string;
+  subtitle?: string;
+  centerHeader?: boolean;
   children: ReactNode;
 }
 
-const AppLayout = ({ title, subtitle, children }: AppLayoutProps) => {
+const AppLayout = ({ title, subtitle, centerHeader = false, children }: AppLayoutProps) => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const navigate = useNavigate();
 
@@ -40,7 +42,7 @@ const AppLayout = ({ title, subtitle, children }: AppLayoutProps) => {
             <div className="flex h-7 w-7 items-center justify-center rounded-lg gradient-bg-primary">
               <Activity className="h-4 w-4 text-primary-foreground" />
             </div>
-            <span>AI Health Companion</span>
+            <span>CuraSync</span>
           </button>
 
           <div className="flex items-center gap-2">
@@ -91,16 +93,17 @@ const AppLayout = ({ title, subtitle, children }: AppLayoutProps) => {
           </div>
 
           <section className="relative overflow-hidden rounded-[1.75rem] p-6 glass-card sm:p-8">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_10%,hsl(var(--primary)/0.18),transparent_42%),radial-gradient(circle_at_80%_20%,hsl(var(--accent)/0.16),transparent_44%)] dark:bg-none" />
             <div className="relative z-10">
-              <p className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+              <h1 className={cn("text-3xl font-bold sm:text-4xl", centerHeader && "text-center")}>
+                <span className="gradient-text">{title}</span>
+              </h1>
+              <p className={cn("mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-primary", centerHeader && "w-full justify-center")}>
                 <Sparkles className="h-3.5 w-3.5" />
                 Personalized Wellness Dashboard
               </p>
-              <h1 className="text-3xl font-bold sm:text-4xl">
-                <span className="gradient-text">{title}</span>
-              </h1>
-              <p className="mt-3 max-w-2xl text-balance text-muted-foreground">{subtitle}</p>
+              {subtitle ? (
+                <p className={cn("mt-3 max-w-2xl text-balance text-muted-foreground", centerHeader && "mx-auto text-center")}>{subtitle}</p>
+              ) : null}
             </div>
           </section>
 
