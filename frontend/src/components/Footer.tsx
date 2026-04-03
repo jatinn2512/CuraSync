@@ -12,7 +12,7 @@ const Footer = () => {
 
   return (
     <footer className="relative border-t border-border/70 bg-card/45 py-16 backdrop-blur-2xl">
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-border/80" />
       <div className="container">
         <div className="mb-12 grid gap-10 md:grid-cols-4">
           <div>
@@ -24,7 +24,7 @@ const Footer = () => {
               <div className="flex h-9 w-9 items-center justify-center rounded-xl transition-transform duration-300 group-hover:scale-105 glow-primary gradient-bg-primary">
                 <Activity className="h-5 w-5 text-primary-foreground" />
               </div>
-              AI Health Companion
+              CuraSync
             </button>
             <p className="text-sm leading-relaxed text-muted-foreground">
               Your intelligent partner for a healthier, happier life.
@@ -49,7 +49,7 @@ const Footer = () => {
 
         <div className="flex flex-col items-center justify-between gap-4 border-t border-border pt-8 sm:flex-row">
           <p className="text-xs text-muted-foreground">
-            Copyright {new Date().getFullYear()} AI Health Companion. All rights reserved.
+            Copyright {new Date().getFullYear()} CuraSync. All rights reserved.
           </p>
           <div className="flex gap-4">
             {["Twitter", "LinkedIn", "GitHub"].map((social) => (
