@@ -45,7 +45,7 @@ const Sidebar = ({ onNavigate }: SidebarProps) => {
         <div className="flex h-9 w-9 items-center justify-center rounded-xl glow-primary gradient-bg-primary">
           <Activity className="h-5 w-5 text-primary-foreground" />
         </div>
-        <span>AI Health Companion</span>
+        <span>CuraSync</span>
       </button>
 
       <p className="mb-2 px-1 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Navigation</p>
