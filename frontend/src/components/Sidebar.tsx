@@ -13,7 +13,7 @@ import { Button } from "@/components/Button";
 import { cn } from "@/lib/utils";
 
 const links = [
-  { label: "User Home", to: "/user-home", icon: Activity },
+  { label: "Home", to: "/user-home", icon: Activity },
   { label: "Dashboard", to: "/dashboard", icon: LayoutDashboard },
   { label: "Health", to: "/health", icon: HeartPulse },
   { label: "Food", to: "/food", icon: Leaf },
