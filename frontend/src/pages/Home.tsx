@@ -132,7 +132,7 @@ const testimonials = [
     name: "Sarah Mitchell",
     role: "Fitness Enthusiast",
     avatar: "SM",
-    text: "AI Health Companion completely changed how I manage my wellness. The symptom checker saved me an unnecessary ER visit - it guided me to the right specialist instead.",
+    text: "CuraSync completely changed how I manage my wellness. The symptom checker saved me an unnecessary ER visit - it guided me to the right specialist instead.",
     rating: 5,
   },
   {
@@ -245,7 +245,7 @@ const Home = () => {
                   <div className="absolute inset-0 scale-75 rounded-full opacity-20 blur-3xl gradient-bg-primary" />
                   <img
                     src={heroImg}
-                    alt="AI Health Companion - smart health assistant interface"
+                    alt="CuraSync - smart health assistant interface"
                     className="relative z-10 w-full max-w-md animate-float lg:max-w-lg"
                     loading="eager"
                   />
@@ -351,7 +351,7 @@ const Home = () => {
                 transition={{ duration: 0.6 }}
               >
                 <h2 className="mb-4 text-3xl font-bold sm:text-4xl">
-                  Why Choose <span className="gradient-text">AI Health Companion</span>?
+                  Why Choose <span className="gradient-text">CuraSync</span>?
                 </h2>
                 <p className="mb-8 text-lg leading-relaxed text-muted-foreground">
                   We combine the precision of artificial intelligence with the compassion of personalized care to deliver a health experience unlike any other.
@@ -487,7 +487,6 @@ const Home = () => {
               transition={{ duration: 0.6 }}
               className="relative overflow-hidden rounded-3xl p-12 text-center gradient-bg-primary md:p-16"
             >
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(255,255,255,0.15),transparent_60%)] dark:bg-none" />
               <div className="relative z-10">
                 <h2 className="mb-4 text-3xl font-bold text-primary-foreground sm:text-4xl lg:text-5xl">
                   Start Your Health Journey Today
