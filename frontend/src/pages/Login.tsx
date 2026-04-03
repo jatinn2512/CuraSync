@@ -51,7 +51,7 @@ const Login = () => {
           <div className="flex h-9 w-9 items-center justify-center rounded-xl glow-primary gradient-bg-primary">
             <Activity className="h-5 w-5 text-primary-foreground" />
           </div>
-          <span>AI Health Companion</span>
+          <span>CuraSync</span>
         </button>
 
         <h1 className="text-3xl font-bold text-balance">Welcome Back</h1>
