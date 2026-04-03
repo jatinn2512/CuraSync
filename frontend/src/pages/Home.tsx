@@ -487,7 +487,7 @@ const Home = () => {
               transition={{ duration: 0.6 }}
               className="relative overflow-hidden rounded-3xl p-12 text-center gradient-bg-primary md:p-16"
             >
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(255,255,255,0.15),transparent_60%)]" />
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(255,255,255,0.15),transparent_60%)] dark:bg-none" />
               <div className="relative z-10">
                 <h2 className="mb-4 text-3xl font-bold text-primary-foreground sm:text-4xl lg:text-5xl">
                   Start Your Health Journey Today
