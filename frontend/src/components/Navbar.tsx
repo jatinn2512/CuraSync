@@ -27,7 +27,7 @@ const Navbar = ({ onSectionClick }: NavbarProps) => {
 
   return (
     <nav className="fixed left-0 right-0 top-0 z-50 border-b border-border/50 bg-card/60 backdrop-blur-2xl">
-      <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-primary/35 to-transparent" />
+      <div className="absolute inset-x-0 bottom-0 h-px bg-border/80" />
       <div className="container flex h-16 items-center justify-between">
         <button
           type="button"
@@ -37,7 +37,7 @@ const Navbar = ({ onSectionClick }: NavbarProps) => {
           <div className="flex h-9 w-9 items-center justify-center rounded-xl transition-transform duration-300 group-hover:scale-105 glow-primary gradient-bg-primary">
             <Activity className="h-5 w-5 text-primary-foreground" />
           </div>
-          <span>AI Health Companion</span>
+          <span>CuraSync</span>
         </button>
 
         <div className="hidden items-center gap-7 md:flex">
