@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import {
   AirVent,
-  ArrowRight,
+  CircleChevronRight,
   HeartPulse,
   LayoutDashboard,
   Leaf,
@@ -17,36 +17,40 @@ const modules = [
     description: "Open your dashboard to review today's streaks, pending actions, and weekly momentum.",
     to: "/dashboard",
     icon: LayoutDashboard,
-    color: "text-primary",
+    color: "text-health-indigo",
     label: "Dashboard",
     cta: "Open Dashboard",
+    buttonClass: "bg-health-indigo hover:bg-health-indigo/90 text-white",
   },
   {
     title: "Track symptoms and daily vitals",
     description: "Log health updates, monitor trends, and check personalized AI insights for better decisions.",
     to: "/health",
     icon: HeartPulse,
-    color: "text-primary",
+    color: "text-health-teal",
     label: "Health",
     cta: "Track Health",
+    buttonClass: "bg-health-teal hover:bg-health-teal/90 text-white",
   },
   {
     title: "Plan meals with better consistency",
     description: "Manage calories, macros, and hydration targets so your nutrition stays aligned with goals.",
     to: "/food",
     icon: Leaf,
-    color: "text-primary",
+    color: "text-health-rose",
     label: "Food",
     cta: "Manage Food",
+    buttonClass: "bg-health-rose hover:bg-health-rose/90 text-white",
   },
   {
     title: "Stay updated with your local AQI",
     description: "Check live air quality, understand exposure risk, and plan safe outdoor activity windows.",
     to: "/aqi",
     icon: AirVent,
-    color: "text-primary",
+    color: "text-health-cyan",
     label: "AQI",
     cta: "Check AQI",
+    buttonClass: "bg-health-cyan hover:bg-health-cyan/90 text-white",
   },
 ];
 
@@ -80,36 +84,26 @@ const UserHome = () => {
               transition={{ delay: index * 0.07 }}
               className="relative overflow-hidden rounded-3xl px-6 py-7 glass-card hover-lift sm:min-h-[250px] sm:px-8 sm:py-9"
             >
-              <div className="relative grid gap-6 md:grid-cols-[1.25fr_0.75fr] md:items-start">
-                <div className={cn("space-y-3", isReverse ? "md:order-2" : "md:order-1")}>
+              <div className={cn("relative grid gap-5 md:grid-cols-[1.35fr_0.85fr] md:items-end", isReverse && "md:[&>*:first-child]:order-2")}>
+                <div className="space-y-3">
                   <p className="inline-flex items-center gap-2 px-0 py-0 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                    <module.icon className={cn("h-3.5 w-3.5", module.color)} />
+                    <module.icon className={cn("hidden h-3.5 w-3.5 sm:block", module.color)} />
                     {module.label}
                   </p>
                   <h3 className="text-2xl font-semibold leading-tight text-foreground sm:text-[1.72rem]">{module.title}</h3>
-                  <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-[0.95rem]">{module.description}</p>
+                  <p className="max-w-3xl text-sm leading-relaxed text-muted-foreground sm:text-[0.95rem]">{module.description}</p>
                 </div>
 
-                <div
-                  className={cn(
-                    "flex items-start justify-start",
-                    isReverse ? "md:order-1" : "md:order-2",
-                  )}
-                >
-                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10">
-                    <module.icon className="h-5 w-5 text-primary" />
-                  </div>
+                <div className={cn("mt-4 md:mt-0 flex w-full", isReverse ? "md:justify-start" : "md:justify-end")}>
+                  <Button
+                    type="button"
+                    className={cn("h-16 w-full max-w-md justify-between border-0 text-base sm:text-lg", module.buttonClass)}
+                    onClick={() => navigate(module.to)}
+                  >
+                    {module.cta}
+                    <CircleChevronRight className="h-11 w-11" />
+                  </Button>
                 </div>
-              </div>
-              <div className={cn("mt-7 flex", isReverse ? "justify-start" : "justify-end")}>
-                <Button
-                  type="button"
-                  className="h-12 w-full max-w-sm justify-between border-0 bg-primary text-primary-foreground hover:bg-primary/90"
-                  onClick={() => navigate(module.to)}
-                >
-                  {module.cta}
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
               </div>
             </motion.article>
           );
