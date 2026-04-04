@@ -15,6 +15,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import NotFound from "./pages/NotFound";
 import PageTransition from "./components/PageTransition";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 const AnimatedRoutes = () => {
   const location = useLocation();
@@ -49,81 +50,101 @@ const AnimatedRoutes = () => {
         <Route
           path="/user-home"
           element={
-            <PageTransition>
-              <UserHome />
-            </PageTransition>
+            <ProtectedRoute>
+              <PageTransition>
+                <UserHome />
+              </PageTransition>
+            </ProtectedRoute>
           }
         />
         <Route
           path="/dashboard"
           element={
-            <PageTransition>
-              <Dashboard />
-            </PageTransition>
+            <ProtectedRoute>
+              <PageTransition>
+                <Dashboard />
+              </PageTransition>
+            </ProtectedRoute>
           }
         />
         <Route
           path="/health"
           element={
-            <PageTransition>
-              <Health />
-            </PageTransition>
+            <ProtectedRoute>
+              <PageTransition>
+                <Health />
+              </PageTransition>
+            </ProtectedRoute>
           }
         />
         <Route
           path="/food"
           element={
-            <PageTransition>
-              <Food />
-            </PageTransition>
+            <ProtectedRoute>
+              <PageTransition>
+                <Food />
+              </PageTransition>
+            </ProtectedRoute>
           }
         />
         <Route
           path="/aqi"
           element={
-            <PageTransition>
-              <Aqi />
-            </PageTransition>
+            <ProtectedRoute>
+              <PageTransition>
+                <Aqi />
+              </PageTransition>
+            </ProtectedRoute>
           }
         />
         <Route
           path="/community"
           element={
-            <PageTransition>
-              <Community />
-            </PageTransition>
+            <ProtectedRoute>
+              <PageTransition>
+                <Community />
+              </PageTransition>
+            </ProtectedRoute>
           }
         />
         <Route
           path="/profile"
           element={
-            <PageTransition>
-              <Profile />
-            </PageTransition>
+            <ProtectedRoute>
+              <PageTransition>
+                <Profile />
+              </PageTransition>
+            </ProtectedRoute>
           }
         />
         <Route
           path="/settings"
           element={
-            <PageTransition>
-              <Settings />
-            </PageTransition>
+            <ProtectedRoute>
+              <PageTransition>
+                <Settings />
+              </PageTransition>
+            </ProtectedRoute>
           }
         />
         <Route
           path="/about"
           element={
-            <PageTransition>
-              <About />
-            </PageTransition>
+            <ProtectedRoute>
+              <PageTransition>
+                <About />
+              </PageTransition>
+            </ProtectedRoute>
           }
         />
         <Route
           path="/pricing"
           element={
-            <PageTransition>
-              <Pricing />
-            </PageTransition>
+            <ProtectedRoute>
+              <PageTransition>
+                <Pricing />
+              </PageTransition>
+            </ProtectedRoute>
           }
         />
         <Route
