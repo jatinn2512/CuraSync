@@ -1,12 +1,13 @@
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Bell, LogOut, Menu, Search, X } from "lucide-react";
+import { Activity, Bell, LogOut, Menu, Search, X } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Sidebar from "@/components/Sidebar";
 import ThemeToggle from "@/components/ThemeToggle";
 import { Button } from "@/components/Button";
 import Footer from "@/components/Footer";
 import { cn } from "@/lib/utils";
+import { clearAuthSession } from "@/lib/auth";
 
 interface AppLayoutProps {
   title?: ReactNode;
@@ -19,10 +20,27 @@ interface AppLayoutProps {
 const AppLayout = ({ title, subtitle, centerHeader = false, hideHeader = false, children }: AppLayoutProps) => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const location = useLocation();
   const navigate = useNavigate();
   const userMenuRef = useRef<HTMLDivElement | null>(null);
   const isSettingsPage = location.pathname === "/settings";
+  const isHealthPage = location.pathname === "/health";
+  const isMobileSearchVisible = isHealthPage;
+
+  const searchPlaceholders: Record<string, string> = {
+    "/dashboard": "Search dashboard insights...",
+    "/health": "Search health reports...",
+    "/food": "Search meals and restaurants...",
+    "/aqi": "Search AQI updates...",
+    "/community": "Search community posts...",
+    "/profile": "Search profile details...",
+    "/settings": "Search settings...",
+    "/about": "Search about and privacy...",
+    "/pricing": "Search plans...",
+    "/user-home": "Search home actions...",
+  };
+  const searchPlaceholder = searchPlaceholders[location.pathname] ?? "Search health data...";
 
   useEffect(() => {
     setUserMenuOpen(false);
@@ -39,6 +57,20 @@ const AppLayout = ({ title, subtitle, centerHeader = false, hideHeader = false, 
     document.addEventListener("mousedown", handleOutsideClick);
     return () => document.removeEventListener("mousedown", handleOutsideClick);
   }, []);
+
+  const handleLogout = () => {
+    clearAuthSession();
+    navigate("/login");
+  };
+
+  const handleSearch = () => {
+    const query = searchQuery.trim();
+    if (!query) return;
+    const browserFind = (window as Window & { find?: (...args: unknown[]) => boolean }).find;
+    if (typeof browserFind === "function") {
+      browserFind(query, false, false, true, false, false, false);
+    }
+  };
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-background text-foreground">
@@ -77,26 +109,43 @@ const AppLayout = ({ title, subtitle, centerHeader = false, hideHeader = false, 
 
       <div className="flex min-h-screen min-w-0 flex-col lg:ml-[15.4rem]">
         <header className="sticky top-0 z-20 border-b border-border/50 bg-card/85 backdrop-blur-2xl">
-          <div className="flex h-16 items-center gap-3 px-4 lg:px-6">
+          <div className="relative flex h-16 items-center gap-3 px-4 lg:px-6">
             <Button type="button" variant="ghost" size="icon" className="h-9 w-9 lg:hidden" onClick={() => setMobileOpen(true)}>
               <Menu className="h-5 w-5" />
             </Button>
 
-            {isSettingsPage ? (
-              <p className="text-sm font-semibold text-muted-foreground">Settings Workspace</p>
-            ) : (
-              <>
-                <div className="relative w-full max-w-md">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <input
-                    type="text"
-                    placeholder="Search health data..."
-                    className="h-10 w-full rounded-xl border border-border/60 bg-muted/55 pl-9 pr-3 text-sm text-foreground outline-none transition focus:ring-2 focus:ring-primary/25"
-                  />
-                </div>
+            {!isMobileSearchVisible ? (
+              <div className="pointer-events-none absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center gap-2.5 lg:hidden">
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
+                  <Activity className="h-4.5 w-4.5 text-primary-foreground" />
+                </span>
+                <span className="font-display text-lg font-bold leading-none text-foreground">CuraSync</span>
+              </div>
+            ) : null}
 
-                <div className="ml-auto flex items-center gap-2">
-                  <ThemeToggle compact />
+            <div className="flex min-w-0 flex-1 items-center">
+              <div className={cn("relative w-full max-w-md", !isMobileSearchVisible && "hidden lg:block", isMobileSearchVisible && "max-w-full")}>
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      handleSearch();
+                    }
+                  }}
+                  placeholder={searchPlaceholder}
+                  className="h-10 w-full rounded-xl border border-border/60 bg-muted/55 pl-9 pr-3 text-sm text-foreground outline-none transition focus:ring-2 focus:ring-primary/25"
+                />
+              </div>
+            </div>
+
+            <div className="ml-auto flex items-center gap-2">
+              <ThemeToggle compact />
+
+              {isSettingsPage ? null : (
+                <>
                   <Button type="button" variant="ghost" size="icon" className="relative h-9 w-9 rounded-xl">
                     <Bell className="h-4 w-4" />
                     <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-health-rose" />
@@ -123,7 +172,7 @@ const AppLayout = ({ title, subtitle, centerHeader = false, hideHeader = false, 
                             type="button"
                             variant="ghost"
                             className="h-9 w-full justify-start rounded-lg text-sm"
-                            onClick={() => navigate("/login")}
+                            onClick={handleLogout}
                           >
                             <LogOut className="h-4 w-4" />
                             Log Out
@@ -132,9 +181,9 @@ const AppLayout = ({ title, subtitle, centerHeader = false, hideHeader = false, 
                       ) : null}
                     </AnimatePresence>
                   </div>
-                </div>
-              </>
-            )}
+                </>
+              )}
+            </div>
           </div>
         </header>
 
