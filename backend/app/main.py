@@ -1,8 +1,36 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
-app = FastAPI(title="Health Companion API")
+from app.api.routes import api_router
+from app.core.config import settings
+from app.db.session import init_db
+from app.services.plan_service import ensure_default_plans
+from app.db.session import CoreSessionLocal
+
+app = FastAPI(title=settings.app_name, version=settings.app_version)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.on_event("startup")
+def startup_event() -> None:
+    init_db()
+    db = CoreSessionLocal()
+    try:
+        ensure_default_plans(db)
+    finally:
+        db.close()
+
+
+app.include_router(api_router, prefix="/api")
 
 
 @app.get("/")
 def read_root() -> dict[str, str]:
-    return {"status": "ok", "message": "Health Companion backend is running"}
+    return {"status": "ok", "message": "CuraSync backend is running"}
