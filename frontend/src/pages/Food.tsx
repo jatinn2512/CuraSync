@@ -60,7 +60,7 @@ const Food = () => {
         </Button>
       </section>
 
-      <section className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {macros.map((macro, index) => (
           <motion.article
             key={macro.label}
@@ -88,7 +88,7 @@ const Food = () => {
 
       {showAdd ? (
         <motion.section initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} className="glass-card rounded-3xl border-border/50 p-4">
-          <div className="grid gap-3 sm:grid-cols-[170px_minmax(0,1fr)_130px_auto]">
+          <div className="grid gap-3 md:grid-cols-[170px_minmax(0,1fr)_130px_auto]">
             <select
               value={newMeal.type}
               onChange={(event) => setNewMeal((prev) => ({ ...prev, type: event.target.value as Meal["type"] }))}
