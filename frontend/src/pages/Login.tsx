@@ -1,130 +1,133 @@
-import { motion } from "framer-motion";
-import { useEffect, useRef, useState } from "react";
-import { Activity, ArrowRight, CheckCircle2, Loader2, ShieldCheck } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { Activity, Eye, EyeOff, Lock, Mail, X } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/Button";
-import ThemeToggle from "@/components/ThemeToggle";
+import heroImg from "@/assets/hero-health-ai.png";
 
 const Login = () => {
   const navigate = useNavigate();
+  const [showPassword, setShowPassword] = useState(false);
   const [isSigningIn, setIsSigningIn] = useState(false);
-  const timeoutRef = useRef<number | null>(null);
 
-  useEffect(() => {
-    return () => {
-      if (timeoutRef.current) {
-        window.clearTimeout(timeoutRef.current);
-      }
-    };
-  }, []);
-
-  const handleLogin = () => {
-    if (isSigningIn) {
-      return;
-    }
-
+  const onLogin = () => {
+    if (isSigningIn) return;
     setIsSigningIn(true);
-    timeoutRef.current = window.setTimeout(() => {
-      navigate("/user-home");
-    }, 620);
+    window.setTimeout(() => {
+      navigate("/dashboard");
+    }, 500);
   };
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden gradient-bg-hero px-4 py-10">
-      <div className="absolute left-8 top-14 h-72 w-72 rounded-full bg-health-cyan/20 blur-3xl" />
-      <div className="absolute bottom-10 right-8 h-96 w-96 rounded-full bg-health-violet/20 blur-3xl" />
-      <div className="absolute right-5 top-5 z-20">
-        <ThemeToggle compact />
-      </div>
-
-      <motion.div
-        initial={{ opacity: 0, y: 24, scale: 0.98 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.46, ease: [0.22, 1, 0.36, 1] }}
-        className="relative z-10 w-full max-w-md rounded-3xl glass-card p-7 sm:p-8"
-      >
-        <button
-          type="button"
-          className="mb-6 flex items-center gap-2.5 font-display text-lg font-bold"
-          onClick={() => navigate("/")}
-        >
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl glow-primary gradient-bg-primary">
-            <Activity className="h-5 w-5 text-primary-foreground" />
+    <div className="min-h-screen bg-[#f1f2f4] px-4 py-8 text-slate-900 md:px-8 md:py-10">
+      <div className="mx-auto grid min-h-[calc(100vh-4rem)] w-full max-w-6xl items-center gap-10 lg:grid-cols-2">
+        <section className="order-2 lg:order-1">
+          <div className="mx-auto max-w-md lg:max-w-lg">
+            <img src={heroImg} alt="CuraSync assistant" className="mx-auto w-full max-w-[380px]" />
+            <h1 className="mt-6 text-3xl font-bold leading-tight text-slate-900 sm:text-4xl">Welcome back. Let&apos;s build.</h1>
+            <p className="mt-3 text-lg leading-relaxed text-slate-700 sm:text-xl">
+              Sign in to access your events, teams, submissions and reviews in one place.
+            </p>
           </div>
-          <span>CuraSync</span>
-        </button>
+        </section>
 
-        <h1 className="text-3xl font-bold text-balance">Welcome Back</h1>
-        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-          Sign in to continue tracking your health journey.
-        </p>
-
-        <form className="mt-6 space-y-4">
-          <div>
-            <label htmlFor="email" className="mb-1 block text-sm text-muted-foreground">
-              Email
-            </label>
-            <input
-              id="email"
-              type="email"
-              placeholder="you@example.com"
-              className="w-full rounded-xl border border-input bg-card/65 px-3 py-2.5 text-sm outline-none ring-ring transition focus:border-primary/50 focus:ring-2"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="password" className="mb-1 block text-sm text-muted-foreground">
-              Password
-            </label>
-            <input
-              id="password"
-              type="password"
-              placeholder="Enter password"
-              className="w-full rounded-xl border border-input bg-card/65 px-3 py-2.5 text-sm outline-none ring-ring transition focus:border-primary/50 focus:ring-2"
-            />
-          </div>
-
-          <Button
-            type="button"
-            className="h-11 w-full gap-2 border-0 text-base gradient-bg-primary text-primary-foreground"
-            onClick={handleLogin}
-            disabled={isSigningIn}
-          >
-            {isSigningIn ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Preparing your dashboard
-              </>
-            ) : (
-              <>
-                Log In <ArrowRight className="h-4 w-4" />
-              </>
-            )}
-          </Button>
-
-          <motion.div
-            initial={false}
-            animate={{
-              opacity: isSigningIn ? 1 : 0,
-              y: isSigningIn ? 0 : -6,
-              height: isSigningIn ? "auto" : 0,
-            }}
-            className="overflow-hidden"
-          >
-            <div className="rounded-xl border border-primary/25 bg-primary/10 p-2.5 text-xs font-medium text-primary">
-              <span className="inline-flex items-center gap-1.5">
-                <CheckCircle2 className="h-3.5 w-3.5" />
-                Sign in successful. Launching your personalized workspace.
-              </span>
+        <section className="order-1 lg:order-2">
+          <div className="mx-auto w-full max-w-[560px] rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_22px_55px_-34px_rgba(15,23,42,0.35)] sm:p-8">
+            <div className="mb-6 flex items-start justify-between gap-3">
+              <div>
+                <button
+                  type="button"
+                  className="mb-3 inline-flex items-center gap-2 text-left text-3xl font-bold leading-none text-slate-900 sm:text-[38px]"
+                  onClick={() => navigate("/")}
+                >
+                  <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-700">
+                    <Activity className="h-6 w-6 text-white" />
+                  </span>
+                  CuraSync
+                </button>
+                <h2 className="text-4xl font-bold leading-none text-slate-900 sm:text-[46px]">Sign In</h2>
+              </div>
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                className="h-10 w-10 rounded-full border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"
+                onClick={() => navigate("/")}
+              >
+                <X className="h-5 w-5" />
+              </Button>
             </div>
-          </motion.div>
-        </form>
 
-        <div className="mt-5 flex items-center gap-2 text-xs text-muted-foreground">
-          <ShieldCheck className="h-4 w-4 text-health-teal" />
-          End-to-end encrypted and HIPAA compliant.
-        </div>
-      </motion.div>
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="email" className="mb-2 block text-sm font-semibold text-slate-700">
+                  Email
+                </label>
+                <div className="flex h-12 items-center gap-2 rounded-2xl border border-slate-300 px-3">
+                  <Mail className="h-4 w-4 text-slate-500" />
+                  <input
+                    id="email"
+                    type="email"
+                    placeholder="Enter your Email"
+                    className="w-full bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-400"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="password" className="mb-2 block text-sm font-semibold text-slate-700">
+                  Password
+                </label>
+                <div className="flex h-12 items-center gap-2 rounded-2xl border border-slate-300 px-3">
+                  <Lock className="h-4 w-4 text-slate-500" />
+                  <input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Enter your Password"
+                    className="w-full bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-400"
+                  />
+                  <button
+                    type="button"
+                    className="text-slate-500"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <button type="button" className="text-sm font-semibold text-emerald-700 hover:underline">
+                Forgot Password?
+              </button>
+
+              <Button
+                type="button"
+                className="h-12 w-full rounded-full border-0 bg-emerald-700 text-lg font-semibold text-white hover:bg-emerald-800"
+                onClick={onLogin}
+                disabled={isSigningIn}
+              >
+                {isSigningIn ? "Signing in..." : "Sign in"}
+              </Button>
+
+              <Button
+                type="button"
+                disabled
+                className="h-12 w-full cursor-not-allowed rounded-full border border-emerald-700 bg-white text-lg font-semibold text-emerald-800 opacity-100 hover:bg-white"
+              >
+                <span className="text-xl">G</span>
+                Sign in with Google (Disabled)
+              </Button>
+
+              <p className="text-sm text-slate-600">
+                New to CuraSync?{" "}
+                <Link to="/register" className="font-semibold text-emerald-700 hover:underline">
+                  Create Account
+                </Link>
+              </p>
+            </div>
+          </div>
+        </section>
+      </div>
     </div>
   );
 };
