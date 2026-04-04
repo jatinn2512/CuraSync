@@ -1,14 +1,8 @@
-import { useState } from "react";
-import { Bell, Moon, Save, Settings, Shield, Sun, Target, User } from "lucide-react";
+import { Save, Target, User } from "lucide-react";
 import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/Button";
-import useTheme from "@/hooks/useTheme";
 
 const Profile = () => {
-  const { theme, toggleTheme } = useTheme();
-  const [notifications, setNotifications] = useState(true);
-  const [twoFactor, setTwoFactor] = useState(false);
-
   return (
     <AppLayout title="Profile" subtitle="Update personal details, manage goals, and configure preferences.">
       <section className="space-y-6">
@@ -84,48 +78,6 @@ const Profile = () => {
           </div>
         </article>
 
-        <article className="glass-card rounded-3xl border-border/50 p-6">
-          <h2 className="mb-4 flex items-center gap-2 text-xl font-semibold">
-            <Settings className="h-5 w-5 text-muted-foreground" />
-            Settings
-          </h2>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between rounded-2xl border border-border/60 bg-card/55 px-4 py-3">
-              <div className="flex items-center gap-3 text-sm">
-                {theme === "dark" ? <Moon className="h-5 w-5 text-health-indigo" /> : <Sun className="h-5 w-5 text-yellow-500" />}
-                Dark Mode
-              </div>
-              <Button type="button" variant="outline" className="h-8 rounded-lg px-3 text-xs" onClick={toggleTheme}>
-                {theme === "dark" ? "On" : "Off"}
-              </Button>
-            </div>
-
-            <div className="flex items-center justify-between rounded-2xl border border-border/60 bg-card/55 px-4 py-3">
-              <div className="flex items-center gap-3 text-sm">
-                <Bell className="h-5 w-5 text-health-violet" />
-                Push Notifications
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                className="h-8 rounded-lg px-3 text-xs"
-                onClick={() => setNotifications((prev) => !prev)}
-              >
-                {notifications ? "On" : "Off"}
-              </Button>
-            </div>
-
-            <div className="flex items-center justify-between rounded-2xl border border-border/60 bg-card/55 px-4 py-3">
-              <div className="flex items-center gap-3 text-sm">
-                <Shield className="h-5 w-5 text-health-teal" />
-                Two-Factor Authentication
-              </div>
-              <Button type="button" variant="outline" className="h-8 rounded-lg px-3 text-xs" onClick={() => setTwoFactor((prev) => !prev)}>
-                {twoFactor ? "On" : "Off"}
-              </Button>
-            </div>
-          </div>
-        </article>
       </section>
     </AppLayout>
   );

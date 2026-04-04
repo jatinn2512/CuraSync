@@ -66,55 +66,55 @@
   }
 
   .dark {
-    --background: 167 22% 8%;
-    --foreground: 154 19% 92%;
+    --background: 223 60% 7%;
+    --foreground: 214 32% 94%;
 
-    --card: 167 20% 12%;
-    --card-foreground: 154 19% 92%;
+    --card: 224 41% 12%;
+    --card-foreground: 214 32% 94%;
 
-    --popover: 167 20% 12%;
-    --popover-foreground: 154 19% 92%;
+    --popover: 224 41% 12%;
+    --popover-foreground: 214 32% 94%;
 
-    --primary: 165 52% 44%;
-    --primary-foreground: 160 28% 10%;
+    --primary: 183 76% 43%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 165 20% 18%;
-    --secondary-foreground: 156 30% 82%;
+    --secondary: 223 33% 16%;
+    --secondary-foreground: 214 22% 88%;
 
-    --muted: 165 18% 16%;
-    --muted-foreground: 158 9% 66%;
+    --muted: 223 30% 16%;
+    --muted-foreground: 219 16% 63%;
 
-    --accent: 165 40% 38%;
-    --accent-foreground: 160 28% 10%;
+    --accent: 183 76% 43%;
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 69% 54%;
+    --destructive: 0 69% 56%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 165 13% 24%;
-    --input: 165 13% 24%;
-    --ring: 165 52% 44%;
+    --border: 221 31% 20%;
+    --input: 221 31% 20%;
+    --ring: 183 76% 43%;
 
-    --glass-bg: 227 33% 13% / 0.74;
-    --glass-border: 212 56% 75% / 0.14;
-    --glass-shadow: 0 0% 0% / 0.56;
+    --glass-bg: 224 41% 12% / 0.98;
+    --glass-border: 221 31% 20% / 0.85;
+    --glass-shadow: 0 0% 0% / 0.5;
 
-    --gradient-hero: hsl(167 22% 8%);
+    --gradient-hero: hsl(223 60% 7%);
     --gradient-primary: hsl(var(--primary));
     --gradient-accent: hsl(var(--accent));
     --gradient-warm: hsl(var(--primary));
 
-    --shadow-soft: 0 20px 34px -24px hsl(var(--glass-shadow));
-    --shadow-card: 0 24px 52px -28px hsl(0 0% 0% / 0.74), inset 0 1px 0 hsl(206 35% 94% / 0.09);
-    --shadow-card-hover: 0 30px 56px -24px hsl(0 0% 0% / 0.82), inset 0 1px 0 hsl(206 35% 94% / 0.1);
+    --shadow-soft: 0 12px 28px -20px hsl(var(--glass-shadow));
+    --shadow-card: 0 12px 24px -16px hsl(0 0% 0% / 0.52);
+    --shadow-card-hover: 0 16px 28px -16px hsl(0 0% 0% / 0.62);
 
-    --sidebar-background: 167 20% 10%;
-    --sidebar-foreground: 154 19% 92%;
-    --sidebar-primary: 165 52% 44%;
+    --sidebar-background: 224 45% 10%;
+    --sidebar-foreground: 214 32% 94%;
+    --sidebar-primary: 183 76% 43%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 165 18% 16%;
-    --sidebar-accent-foreground: 154 19% 92%;
-    --sidebar-border: 165 13% 20%;
-    --sidebar-ring: 165 52% 44%;
+    --sidebar-accent: 223 30% 16%;
+    --sidebar-accent-foreground: 214 32% 94%;
+    --sidebar-border: 221 31% 20%;
+    --sidebar-ring: 183 76% 43%;
   }
 }
 
@@ -145,9 +145,9 @@
 
 @layer components {
   .glass-card {
-    @apply border backdrop-blur-2xl;
+    @apply border;
     border-color: hsl(var(--glass-border));
-    background: hsl(var(--card) / 0.84);
+    background: hsl(var(--card));
     box-shadow: var(--shadow-card);
   }
 
