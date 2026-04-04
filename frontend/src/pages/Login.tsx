@@ -1,42 +1,143 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Activity, Eye, EyeOff, Lock, Mail, X } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/Button";
 import heroImg from "@/assets/hero-health-ai.png";
+import { getApiBaseUrl, isAuthenticated, saveAuthSession } from "@/lib/auth";
+
+const getErrorMessage = (payload: unknown, fallback: string): string => {
+  if (typeof payload === "object" && payload && "detail" in payload) {
+    const detail = (payload as { detail?: unknown }).detail;
+    if (typeof detail === "string" && detail.trim()) {
+      const normalized = detail.trim();
+      if (normalized.toLowerCase().includes("email")) {
+        return "Invalid email. Email must contain @.";
+      }
+      return normalized;
+    }
+    if (Array.isArray(detail) && detail.length > 0) {
+      const first = detail[0];
+      if (typeof first === "object" && first && "msg" in first) {
+        const msg = (first as { msg?: unknown }).msg;
+        if (typeof msg === "string" && msg.trim()) {
+          const normalized = msg.trim().toLowerCase();
+          if (normalized.includes("email")) {
+            return "Invalid email. Email must contain @.";
+          }
+          return msg.trim();
+        }
+      }
+    }
+  }
+  return fallback;
+};
 
 const Login = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [showPassword, setShowPassword] = useState(false);
   const [isSigningIn, setIsSigningIn] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
+  const redirectTo = useMemo(() => {
+    const state = location.state as { from?: string } | null;
+    return state?.from || "/dashboard";
+  }, [location.state]);
 
-  const onLogin = () => {
+  useEffect(() => {
+    if (isAuthenticated()) {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [navigate]);
+
+  const onLogin = async () => {
     if (isSigningIn) return;
+
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail || !password) {
+      setErrorMessage("Email and password are required.");
+      return;
+    }
+    if (!normalizedEmail.includes("@")) {
+      setErrorMessage("Invalid email. Email must contain @.");
+      return;
+    }
+
+    setErrorMessage("");
     setIsSigningIn(true);
-    window.setTimeout(() => {
-      navigate("/dashboard");
-    }, 500);
+
+    try {
+      const baseUrl = getApiBaseUrl();
+      const response = await fetch(`${baseUrl}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: normalizedEmail, password }),
+      });
+
+      if (!response.ok) {
+        let detail = "Invalid email or password.";
+        try {
+          const payload = (await response.json()) as unknown;
+          detail = getErrorMessage(payload, detail);
+        } catch {
+          // Keep fallback message.
+        }
+        throw new Error(detail);
+      }
+
+      const tokenPayload = (await response.json()) as { access_token: string; refresh_token: string };
+      let fullName = normalizedEmail.split("@")[0] || "User";
+
+      try {
+        const meResponse = await fetch(`${baseUrl}/auth/me`, {
+          headers: { Authorization: `Bearer ${tokenPayload.access_token}` },
+        });
+        if (meResponse.ok) {
+          const me = (await meResponse.json()) as { full_name?: string };
+          if (me.full_name?.trim()) {
+            fullName = me.full_name.trim();
+          }
+        }
+      } catch {
+        // Login token is enough to continue.
+      }
+
+      saveAuthSession(tokenPayload.access_token, tokenPayload.refresh_token, fullName);
+      navigate(redirectTo, { replace: true });
+    } catch (error) {
+      if (error instanceof TypeError) {
+        setErrorMessage("Login failed. Please try again.");
+      } else if (error instanceof Error) {
+        setErrorMessage(error.message);
+      } else {
+        setErrorMessage("Invalid email or password.");
+      }
+    } finally {
+      setIsSigningIn(false);
+    }
   };
 
   return (
-    <div className="min-h-screen bg-[#f1f2f4] px-4 py-8 text-slate-900 md:px-8 md:py-10">
+    <div className="min-h-screen bg-background px-4 py-8 text-foreground md:px-8 md:py-10">
       <div className="mx-auto grid min-h-[calc(100vh-4rem)] w-full max-w-6xl items-start gap-10 lg:items-center lg:grid-cols-2">
         <section className="hidden lg:block">
           <div className="mx-auto max-w-md lg:max-w-lg">
             <img src={heroImg} alt="CuraSync assistant" className="mx-auto w-full max-w-[380px]" />
-            <h1 className="mt-6 text-3xl font-bold leading-tight text-slate-900 sm:text-4xl">Welcome back</h1>
-            <p className="mt-3 text-lg leading-relaxed text-slate-700 sm:text-xl">
+            <h1 className="mt-6 text-3xl font-bold leading-tight text-foreground sm:text-4xl">Welcome back</h1>
+            <p className="mt-3 text-lg leading-relaxed text-muted-foreground sm:text-xl">
               Login in to continue to track your health, routines and progress in one workspace.
             </p>
           </div>
         </section>
 
         <section className="w-full">
-          <div className="mx-auto w-full max-w-[560px] rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_22px_55px_-34px_rgba(15,23,42,0.35)] sm:p-8">
+          <div className="mx-auto w-full max-w-[560px] rounded-[28px] border border-border/70 bg-card p-6 shadow-[0_22px_55px_-34px_rgba(15,23,42,0.35)] sm:p-8">
             <div className="mb-6 flex items-start justify-between gap-3">
               <div>
                 <button
                   type="button"
-                  className="mb-3 inline-flex items-center gap-2 text-left text-3xl font-bold leading-none text-slate-900 sm:text-[38px]"
+                  className="mb-3 inline-flex items-center gap-2 text-left text-3xl font-bold leading-none text-foreground sm:text-[38px]"
                   onClick={() => navigate("/")}
                 >
                   <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-700">
@@ -44,13 +145,13 @@ const Login = () => {
                   </span>
                   CuraSync
                 </button>
-                <h2 className="text-4xl font-bold leading-none text-slate-900 sm:text-[46px]">Sign In</h2>
+                <h2 className="text-4xl font-bold leading-none text-foreground sm:text-[46px]">Sign In</h2>
               </div>
               <Button
                 type="button"
                 size="icon"
                 variant="ghost"
-                className="h-10 w-10 rounded-full border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"
+                className="h-10 w-10 rounded-full border border-border bg-muted text-muted-foreground hover:bg-muted/80"
                 onClick={() => navigate("/")}
               >
                 <X className="h-5 w-5" />
@@ -58,36 +159,46 @@ const Login = () => {
             </div>
 
             <div className="space-y-4">
+              {errorMessage ? (
+                <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700">
+                  {errorMessage}
+                </div>
+              ) : null}
+
               <div>
-                <label htmlFor="email" className="mb-2 block text-sm font-semibold text-slate-700">
+                <label htmlFor="email" className="mb-2 block text-sm font-semibold text-foreground">
                   Email
                 </label>
-                <div className="flex h-12 items-center gap-2 rounded-2xl border border-slate-300 px-3">
-                  <Mail className="h-4 w-4 text-slate-500" />
+                <div className="flex h-12 items-center gap-2 rounded-2xl border border-border bg-background/60 px-3">
+                  <Mail className="h-4 w-4 text-muted-foreground" />
                   <input
                     id="email"
                     type="email"
                     placeholder="Enter your Email"
-                    className="w-full bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-400"
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                    className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
                   />
                 </div>
               </div>
 
               <div>
-                <label htmlFor="password" className="mb-2 block text-sm font-semibold text-slate-700">
+                <label htmlFor="password" className="mb-2 block text-sm font-semibold text-foreground">
                   Password
                 </label>
-                <div className="flex h-12 items-center gap-2 rounded-2xl border border-slate-300 px-3">
-                  <Lock className="h-4 w-4 text-slate-500" />
+                <div className="flex h-12 items-center gap-2 rounded-2xl border border-border bg-background/60 px-3">
+                  <Lock className="h-4 w-4 text-muted-foreground" />
                   <input
                     id="password"
                     type={showPassword ? "text" : "password"}
                     placeholder="Enter your Password"
-                    className="w-full bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-400"
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
                   />
                   <button
                     type="button"
-                    className="text-slate-500"
+                    className="text-muted-foreground"
                     onClick={() => setShowPassword((prev) => !prev)}
                     aria-label={showPassword ? "Hide password" : "Show password"}
                   >
@@ -113,7 +224,7 @@ const Login = () => {
                 type="button"
                 onClick={() => {}}
                 aria-disabled="true"
-                className="h-12 w-full rounded-full border border-emerald-700 bg-white text-lg font-semibold text-emerald-800 hover:bg-white"
+                className="h-12 w-full rounded-full border border-emerald-700 bg-card text-lg font-semibold text-foreground hover:bg-muted/30"
               >
                 <svg aria-hidden="true" className="h-5 w-5" viewBox="0 0 24 24">
                   <path
@@ -136,7 +247,7 @@ const Login = () => {
                 Sign in with Google (Disabled)
               </Button>
 
-              <p className="text-sm text-slate-600">
+              <p className="text-sm text-muted-foreground">
                 New to CuraSync?{" "}
                 <Link to="/register" className="font-semibold text-emerald-700 hover:underline">
                   Create Account
