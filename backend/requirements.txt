@@ -1,3 +1,9 @@
 fastapi
 uvicorn[standard]
 python-dotenv
+sqlalchemy
+alembic
+passlib[bcrypt]
+python-jose[cryptography]
+email-validator
+pydantic-settings
