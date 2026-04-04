@@ -1,10 +1,12 @@
-import { motion } from "framer-motion";
+import { useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   Activity,
   ArrowRight,
   BarChart3,
   Bell,
   Brain,
+  ChevronDown,
   ClipboardList,
   Clock,
   Cpu,
@@ -151,6 +153,44 @@ const testimonials = [
   },
 ];
 
+const faqItems = [
+  {
+    question: "Who is CuraSync for?",
+    answer:
+      "CuraSync is designed for people between 18 and 60 years who want daily wellness tracking, insights, and preventive health support.",
+  },
+  {
+    question: "Is CuraSync a replacement for doctors?",
+    answer:
+      "No. CuraSync gives AI guidance and tracking support, but it does not replace medical diagnosis or emergency care.",
+  },
+  {
+    question: "Is my health data secure?",
+    answer:
+      "Yes. Your account data is protected and privacy-focused controls are available in settings so you can manage visibility.",
+  },
+  {
+    question: "Can I track nutrition, sleep, and AQI in one place?",
+    answer:
+      "Yes. CuraSync combines meals, hydration, sleep trends, air quality, and personalized recommendations in one dashboard flow.",
+  },
+  {
+    question: "Do I need paid plan to start?",
+    answer:
+      "No. You can start with the current free plan and upgrade later when you want deeper analytics and premium features.",
+  },
+  {
+    question: "Can I use CuraSync on mobile and desktop?",
+    answer:
+      "Yes. CuraSync is built to work across mobile and desktop so you can track and review your health data anywhere.",
+  },
+  {
+    question: "Can I update my profile details later?",
+    answer:
+      "Yes. You can update your age, height, weight, goals, and preferences anytime from your profile and settings.",
+  },
+];
+
 const container = {
   hidden: {},
   show: { transition: { staggerChildren: 0.1 } },
@@ -163,6 +203,7 @@ const item = {
 
 const Home = () => {
   const navigate = useNavigate();
+  const [openFaq, setOpenFaq] = useState<number | null>(0);
 
   const goToSection = (section: string) => {
     document.getElementById(section)?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -201,6 +242,15 @@ const Home = () => {
                   Track symptoms, receive personalized insights, and take control of your wellness journey - all powered by advanced artificial intelligence.
                 </p>
 
+                <div className="mb-6 flex justify-center lg:hidden">
+                  <img
+                    src={heroImg}
+                    alt="CuraSync - smart health assistant interface"
+                    className="w-full max-w-[320px]"
+                    loading="eager"
+                  />
+                </div>
+
                 <div className="flex flex-col justify-center gap-4 sm:flex-row lg:justify-start">
                   <Button
                     size="lg"
@@ -219,16 +269,16 @@ const Home = () => {
                   </Button>
                 </div>
 
-                <div className="mt-10 flex items-center justify-center gap-6 text-sm text-muted-foreground lg:justify-start">
-                  <span className="flex items-center gap-1.5">
+                <div className="mt-8 grid grid-cols-3 gap-3 text-center text-xs text-muted-foreground sm:mt-10 sm:flex sm:items-center sm:justify-center sm:gap-6 sm:text-sm lg:justify-start">
+                  <span className="flex flex-col items-center gap-1.5 sm:flex-row">
                     <span className="h-2 w-2 rounded-full bg-health-teal" />
                     10k+ Active Users
                   </span>
-                  <span className="flex items-center gap-1.5">
+                  <span className="flex flex-col items-center gap-1.5 sm:flex-row">
                     <span className="h-2 w-2 rounded-full bg-health-cyan" />
                     HIPAA Compliant
                   </span>
-                  <span className="flex items-center gap-1.5">
+                  <span className="flex flex-col items-center gap-1.5 sm:flex-row">
                     <span className="h-2 w-2 rounded-full bg-health-violet" />
                     24/7 Support
                   </span>
@@ -239,7 +289,7 @@ const Home = () => {
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.7, delay: 0.2 }}
-                className="flex justify-center"
+                className="hidden justify-center lg:flex"
               >
                 <div className="relative">
                   <div className="absolute inset-0 scale-75 rounded-full opacity-20 blur-3xl gradient-bg-primary" />
@@ -512,6 +562,62 @@ const Home = () => {
                   </Button>
                 </div>
               </div>
+            </motion.div>
+          </div>
+        </section>
+
+        <section id="faq" className="bg-muted/40 py-24">
+          <div className="container">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="mb-12 text-center"
+            >
+              <h2 className="mb-4 text-3xl font-bold sm:text-4xl">
+                Frequently Asked <span className="gradient-text">Questions</span>
+              </h2>
+              <p className="mx-auto max-w-2xl text-lg text-muted-foreground">
+                Quick answers to the most common questions about CuraSync.
+              </p>
+            </motion.div>
+
+            <motion.div
+              variants={container}
+              initial="hidden"
+              whileInView="show"
+              viewport={{ once: true }}
+              className="mx-auto max-w-4xl space-y-4"
+            >
+              {faqItems.map((faq, index) => (
+                <motion.article key={faq.question} variants={item} className="rounded-2xl glass-card">
+                  <button
+                    type="button"
+                    className="flex w-full items-center justify-between gap-3 p-5 text-left"
+                    onClick={() => setOpenFaq((prev) => (prev === index ? null : index))}
+                  >
+                    <span className="text-base font-semibold">{faq.question}</span>
+                    <ChevronDown
+                      className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-300 ${
+                        openFaq === index ? "rotate-180" : "rotate-0"
+                      }`}
+                    />
+                  </button>
+                  <AnimatePresence initial={false}>
+                    {openFaq === index ? (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+                        className="overflow-hidden"
+                      >
+                        <p className="px-5 pb-5 text-sm leading-relaxed text-muted-foreground">{faq.answer}</p>
+                      </motion.div>
+                    ) : null}
+                  </AnimatePresence>
+                </motion.article>
+              ))}
             </motion.div>
           </div>
         </section>

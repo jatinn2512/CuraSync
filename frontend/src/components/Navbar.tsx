@@ -9,7 +9,7 @@ const navLinks = [
   { label: "Features", href: "#features", section: "features" },
   { label: "How It Works", href: "#how-it-works", section: "how-it-works" },
   { label: "Benefits", href: "#benefits", section: "benefits" },
-  { label: "Testimonials", href: "#testimonials", section: "testimonials" },
+  { label: "FAQs", href: "#faq", section: "faq" },
 ];
 
 interface NavbarProps {

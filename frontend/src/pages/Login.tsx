@@ -19,18 +19,18 @@ const Login = () => {
 
   return (
     <div className="min-h-screen bg-[#f1f2f4] px-4 py-8 text-slate-900 md:px-8 md:py-10">
-      <div className="mx-auto grid min-h-[calc(100vh-4rem)] w-full max-w-6xl items-center gap-10 lg:grid-cols-2">
-        <section className="order-2 lg:order-1">
+      <div className="mx-auto grid min-h-[calc(100vh-4rem)] w-full max-w-6xl items-start gap-10 lg:items-center lg:grid-cols-2">
+        <section className="hidden lg:block">
           <div className="mx-auto max-w-md lg:max-w-lg">
             <img src={heroImg} alt="CuraSync assistant" className="mx-auto w-full max-w-[380px]" />
-            <h1 className="mt-6 text-3xl font-bold leading-tight text-slate-900 sm:text-4xl">Welcome back. Let&apos;s build.</h1>
+            <h1 className="mt-6 text-3xl font-bold leading-tight text-slate-900 sm:text-4xl">Welcome back</h1>
             <p className="mt-3 text-lg leading-relaxed text-slate-700 sm:text-xl">
-              Sign in to access your events, teams, submissions and reviews in one place.
+              Login in to continue to track your health, routines and progress in one workspace.
             </p>
           </div>
         </section>
 
-        <section className="order-1 lg:order-2">
+        <section className="w-full">
           <div className="mx-auto w-full max-w-[560px] rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_22px_55px_-34px_rgba(15,23,42,0.35)] sm:p-8">
             <div className="mb-6 flex items-start justify-between gap-3">
               <div>
@@ -111,10 +111,28 @@ const Login = () => {
 
               <Button
                 type="button"
-                disabled
-                className="h-12 w-full cursor-not-allowed rounded-full border border-emerald-700 bg-white text-lg font-semibold text-emerald-800 opacity-100 hover:bg-white"
+                onClick={() => {}}
+                aria-disabled="true"
+                className="h-12 w-full rounded-full border border-emerald-700 bg-white text-lg font-semibold text-emerald-800 hover:bg-white"
               >
-                <span className="text-xl">G</span>
+                <svg aria-hidden="true" className="h-5 w-5" viewBox="0 0 24 24">
+                  <path
+                    fill="#4285F4"
+                    d="M23.49 12.27c0-.79-.07-1.55-.2-2.27H12v4.3h6.45a5.52 5.52 0 0 1-2.4 3.62v3h3.88c2.27-2.09 3.56-5.17 3.56-8.65z"
+                  />
+                  <path
+                    fill="#34A853"
+                    d="M12 24c3.24 0 5.96-1.07 7.95-2.9l-3.88-3a7.2 7.2 0 0 1-10.73-3.78H1.34v3.08A12 12 0 0 0 12 24z"
+                  />
+                  <path
+                    fill="#FBBC05"
+                    d="M5.34 14.32a7.2 7.2 0 0 1 0-4.58V6.66H1.34a12 12 0 0 0 0 10.74l4-3.08z"
+                  />
+                  <path
+                    fill="#EA4335"
+                    d="M12 4.77c1.76 0 3.34.6 4.58 1.8l3.43-3.43A11.48 11.48 0 0 0 12 0 12 12 0 0 0 1.34 6.66l4 3.08A7.2 7.2 0 0 1 12 4.77z"
+                  />
+                </svg>
                 Sign in with Google (Disabled)
               </Button>
 
