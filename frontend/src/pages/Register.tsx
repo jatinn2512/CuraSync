@@ -3,41 +3,154 @@ import { Activity, Eye, EyeOff, Lock, Mail, UserRound, X } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/Button";
 import heroImg from "@/assets/hero-health-ai.png";
+import { getApiBaseUrl, saveAuthSession } from "@/lib/auth";
+
+const getErrorMessage = (payload: unknown, fallback: string): string => {
+  if (typeof payload === "object" && payload && "detail" in payload) {
+    const detail = (payload as { detail?: unknown }).detail;
+    if (typeof detail === "string" && detail.trim()) {
+      const normalized = detail.trim().toLowerCase();
+      if (normalized.includes("password") && (normalized.includes("least") || normalized.includes("8"))) {
+        return "Password must be at least 8 characters.";
+      }
+      if (normalized.includes("email")) {
+        return "Invalid email. Email must contain @.";
+      }
+      return detail.trim();
+    }
+    if (Array.isArray(detail) && detail.length > 0) {
+      const first = detail[0];
+      if (typeof first === "object" && first && "msg" in first) {
+        const msg = (first as { msg?: unknown }).msg;
+        if (typeof msg === "string" && msg.trim()) {
+          const normalized = msg.trim().toLowerCase();
+          if (normalized.includes("password") && (normalized.includes("least") || normalized.includes("8"))) {
+            return "Password must be at least 8 characters.";
+          }
+          if (normalized.includes("email")) {
+            return "Invalid email. Email must contain @.";
+          }
+          return msg.trim();
+        }
+      }
+    }
+  }
+  return fallback;
+};
 
 const Register = () => {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
 
-  const onCreateAccount = () => {
+  const onCreateAccount = async () => {
     if (isCreating) return;
+
+    const trimmedName = fullName.trim();
+    const normalizedEmail = email.trim().toLowerCase();
+
+    if (!trimmedName || !normalizedEmail || !password || !confirmPassword) {
+      setErrorMessage("All fields are required.");
+      return;
+    }
+    if (!normalizedEmail.includes("@")) {
+      setErrorMessage("Invalid email. Email must contain @.");
+      return;
+    }
+    if (password !== confirmPassword) {
+      setErrorMessage("Password and confirm password must match.");
+      return;
+    }
+    if (password.length < 8) {
+      setErrorMessage("Password must be at least 8 characters.");
+      return;
+    }
+
+    setErrorMessage("");
     setIsCreating(true);
-    window.setTimeout(() => {
-      navigate("/dashboard");
-    }, 550);
+
+    try {
+      const baseUrl = getApiBaseUrl();
+      const registerResponse = await fetch(`${baseUrl}/auth/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          full_name: trimmedName,
+          email: normalizedEmail,
+          password,
+        }),
+      });
+
+      if (!registerResponse.ok) {
+        let detail = "Unable to register.";
+        try {
+          const payload = (await registerResponse.json()) as unknown;
+          detail = getErrorMessage(payload, detail);
+        } catch {
+          // Keep fallback message.
+        }
+        throw new Error(detail);
+      }
+
+      const loginResponse = await fetch(`${baseUrl}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: normalizedEmail, password }),
+      });
+
+      if (!loginResponse.ok) {
+        let detail = "Account created, but auto-login failed.";
+        try {
+          const payload = (await loginResponse.json()) as unknown;
+          detail = getErrorMessage(payload, detail);
+        } catch {
+          // Keep fallback message.
+        }
+        throw new Error(detail);
+      }
+
+      const tokenPayload = (await loginResponse.json()) as { access_token: string; refresh_token: string };
+      saveAuthSession(tokenPayload.access_token, tokenPayload.refresh_token, trimmedName);
+      navigate("/dashboard", { replace: true });
+    } catch (error) {
+      if (error instanceof TypeError) {
+        setErrorMessage("Registration failed. Please try again.");
+      } else if (error instanceof Error) {
+        setErrorMessage(error.message);
+      } else {
+        setErrorMessage("Registration failed. Please try again.");
+      }
+    } finally {
+      setIsCreating(false);
+    }
   };
 
   return (
-    <div className="min-h-screen bg-[#f1f2f4] px-4 py-8 text-slate-900 md:px-8 md:py-10">
+    <div className="min-h-screen bg-background px-4 py-8 text-foreground md:px-8 md:py-10">
       <div className="mx-auto grid min-h-[calc(100vh-4rem)] w-full max-w-6xl items-start gap-6 lg:items-center lg:grid-cols-2 lg:gap-10">
         <section className="hidden lg:block">
           <div className="mx-auto max-w-md lg:max-w-lg">
             <img src={heroImg} alt="CuraSync assistant" className="mx-auto w-full max-w-[380px]" />
-            <h1 className="mt-6 text-3xl font-bold leading-tight text-slate-900 sm:text-4xl">Create your account.</h1>
-            <p className="mt-3 text-lg leading-relaxed text-slate-700 sm:text-xl">
+            <h1 className="mt-6 text-3xl font-bold leading-tight text-foreground sm:text-4xl">Create your account.</h1>
+            <p className="mt-3 text-lg leading-relaxed text-muted-foreground sm:text-xl">
               Join CuraSync to track your health, routines and progress in one workspace.
             </p>
           </div>
         </section>
 
         <section className="w-full">
-          <div className="mx-auto w-full max-w-[560px] rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_22px_55px_-34px_rgba(15,23,42,0.35)] sm:p-8">
+          <div className="mx-auto w-full max-w-[560px] rounded-[28px] border border-border/70 bg-card p-6 shadow-[0_22px_55px_-34px_rgba(15,23,42,0.35)] sm:p-8">
             <div className="mb-6 flex items-start justify-between gap-3">
               <div>
                 <button
                   type="button"
-                  className="mb-3 inline-flex items-center gap-2 text-left text-3xl font-bold leading-none text-slate-900 sm:text-[38px]"
+                  className="mb-3 inline-flex items-center gap-2 text-left text-3xl font-bold leading-none text-foreground sm:text-[38px]"
                   onClick={() => navigate("/")}
                 >
                   <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-700">
@@ -45,13 +158,13 @@ const Register = () => {
                   </span>
                   CuraSync
                 </button>
-                <h2 className="text-4xl font-bold leading-none text-slate-900 sm:text-[42px]">Create Account</h2>
+                <h2 className="text-4xl font-bold leading-none text-foreground sm:text-[42px]">Create Account</h2>
               </div>
               <Button
                 type="button"
                 size="icon"
                 variant="ghost"
-                className="h-10 w-10 rounded-full border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"
+                className="h-10 w-10 rounded-full border border-border bg-muted text-muted-foreground hover:bg-muted/80"
                 onClick={() => navigate("/")}
               >
                 <X className="h-5 w-5" />
@@ -59,51 +172,63 @@ const Register = () => {
             </div>
 
             <div className="space-y-4">
+              {errorMessage ? (
+                <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700">
+                  {errorMessage}
+                </div>
+              ) : null}
+
               <div>
-                <label htmlFor="name" className="mb-2 block text-sm font-semibold text-slate-700">
+                <label htmlFor="name" className="mb-2 block text-sm font-semibold text-foreground">
                   Full Name
                 </label>
-                <div className="flex h-12 items-center gap-2 rounded-2xl border border-slate-300 px-3">
-                  <UserRound className="h-4 w-4 text-slate-500" />
+                <div className="flex h-12 items-center gap-2 rounded-2xl border border-border bg-background/60 px-3">
+                  <UserRound className="h-4 w-4 text-muted-foreground" />
                   <input
                     id="name"
                     type="text"
                     placeholder="Enter your Name"
-                    className="w-full bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-400"
+                    value={fullName}
+                    onChange={(event) => setFullName(event.target.value)}
+                    className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
                   />
                 </div>
               </div>
 
               <div>
-                <label htmlFor="email" className="mb-2 block text-sm font-semibold text-slate-700">
+                <label htmlFor="email" className="mb-2 block text-sm font-semibold text-foreground">
                   Email
                 </label>
-                <div className="flex h-12 items-center gap-2 rounded-2xl border border-slate-300 px-3">
-                  <Mail className="h-4 w-4 text-slate-500" />
+                <div className="flex h-12 items-center gap-2 rounded-2xl border border-border bg-background/60 px-3">
+                  <Mail className="h-4 w-4 text-muted-foreground" />
                   <input
                     id="email"
                     type="email"
                     placeholder="Enter your Email"
-                    className="w-full bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-400"
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                    className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
                   />
                 </div>
               </div>
 
               <div>
-                <label htmlFor="password" className="mb-2 block text-sm font-semibold text-slate-700">
+                <label htmlFor="password" className="mb-2 block text-sm font-semibold text-foreground">
                   Password
                 </label>
-                <div className="flex h-12 items-center gap-2 rounded-2xl border border-slate-300 px-3">
-                  <Lock className="h-4 w-4 text-slate-500" />
+                <div className="flex h-12 items-center gap-2 rounded-2xl border border-border bg-background/60 px-3">
+                  <Lock className="h-4 w-4 text-muted-foreground" />
                   <input
                     id="password"
                     type={showPassword ? "text" : "password"}
                     placeholder="Create Password"
-                    className="w-full bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-400"
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
                   />
                   <button
                     type="button"
-                    className="text-slate-500"
+                    className="text-muted-foreground"
                     onClick={() => setShowPassword((prev) => !prev)}
                     aria-label={showPassword ? "Hide password" : "Show password"}
                   >
@@ -113,20 +238,22 @@ const Register = () => {
               </div>
 
               <div>
-                <label htmlFor="confirm-password" className="mb-2 block text-sm font-semibold text-slate-700">
+                <label htmlFor="confirm-password" className="mb-2 block text-sm font-semibold text-foreground">
                   Confirm Password
                 </label>
-                <div className="flex h-12 items-center gap-2 rounded-2xl border border-slate-300 px-3">
-                  <Lock className="h-4 w-4 text-slate-500" />
+                <div className="flex h-12 items-center gap-2 rounded-2xl border border-border bg-background/60 px-3">
+                  <Lock className="h-4 w-4 text-muted-foreground" />
                   <input
                     id="confirm-password"
                     type={showConfirmPassword ? "text" : "password"}
                     placeholder="Confirm Password"
-                    className="w-full bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-400"
+                    value={confirmPassword}
+                    onChange={(event) => setConfirmPassword(event.target.value)}
+                    className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
                   />
                   <button
                     type="button"
-                    className="text-slate-500"
+                    className="text-muted-foreground"
                     onClick={() => setShowConfirmPassword((prev) => !prev)}
                     aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
                   >
@@ -148,7 +275,7 @@ const Register = () => {
                 type="button"
                 onClick={() => {}}
                 aria-disabled="true"
-                className="h-12 w-full rounded-full border border-emerald-700 bg-white text-lg font-semibold text-emerald-800 hover:bg-white"
+                className="h-12 w-full rounded-full border border-emerald-700 bg-card text-lg font-semibold text-foreground hover:bg-muted/30"
               >
                 <svg aria-hidden="true" className="h-5 w-5" viewBox="0 0 24 24">
                   <path
@@ -171,7 +298,7 @@ const Register = () => {
                 Sign up with Google (Disabled)
               </Button>
 
-              <p className="text-sm text-slate-600">
+              <p className="text-sm text-muted-foreground">
                 Already have an account?{" "}
                 <Link to="/login" className="font-semibold text-emerald-700 hover:underline">
                   Sign In
