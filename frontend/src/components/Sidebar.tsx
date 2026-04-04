@@ -1,96 +1,77 @@
-import {
-  Activity,
-  AirVent,
-  HeartPulse,
-  LayoutDashboard,
-  Leaf,
-  LogOut,
-  User,
-  Users,
-} from "lucide-react";
+import { Activity, AirVent, ChevronRight, HeartPulse, LayoutDashboard, Leaf, Settings, User, Users } from "lucide-react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { Button } from "@/components/Button";
 import { cn } from "@/lib/utils";
 
 const links = [
-  { label: "Home", to: "/user-home", icon: Activity },
   { label: "Dashboard", to: "/dashboard", icon: LayoutDashboard },
   { label: "Health", to: "/health", icon: HeartPulse },
   { label: "Food", to: "/food", icon: Leaf },
   { label: "AQI", to: "/aqi", icon: AirVent },
   { label: "Community", to: "/community", icon: Users },
   { label: "Profile", to: "/profile", icon: User },
-];
+  { label: "Settings", to: "/settings", icon: Settings },
+] as const;
 
 interface SidebarProps {
   onNavigate?: () => void;
 }
 
-const linkClass =
-  "group flex items-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-semibold transition-all duration-200";
-
 const Sidebar = ({ onNavigate }: SidebarProps) => {
   const navigate = useNavigate();
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full min-h-0 flex-col">
       <button
         type="button"
-        className="mb-6 flex items-center gap-2.5 font-display text-lg font-bold"
+        className="flex items-center gap-3 border-b border-border/60 px-4 py-6 text-left"
         onClick={() => {
           onNavigate?.();
-          navigate("/user-home");
+          navigate("/dashboard");
         }}
       >
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl glow-primary gradient-bg-primary">
-          <Activity className="h-5 w-5 text-primary-foreground" />
+        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
+          <Activity className="h-5.5 w-5.5 text-primary-foreground" />
         </div>
-        <span>CuraSync</span>
+        <div>
+          <p className="font-display text-[18px] font-bold leading-none">CuraSync</p>
+          <p className="mt-1 text-xs text-muted-foreground">Health Dashboard</p>
+        </div>
       </button>
 
-      <p className="mb-2 px-1 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Navigation</p>
-
-      <nav className="space-y-1.5">
+      <nav className="flex-1 space-y-1.5 px-3 py-5">
         {links.map((link) => (
           <NavLink
             key={link.to}
             to={link.to}
+            onClick={() => onNavigate?.()}
             className={({ isActive }) =>
               cn(
-                linkClass,
+                "group flex items-center gap-3 rounded-xl px-3.5 py-3 text-[15px] font-medium transition-all duration-200",
                 isActive
-                  ? "border-transparent gradient-bg-primary text-primary-foreground shadow-soft"
-                  : "border-border/60 bg-card/45 text-muted-foreground hover:border-primary/35 hover:bg-card/75 hover:text-foreground",
+                  ? "bg-primary text-primary-foreground shadow-soft"
+                  : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
               )
             }
-            onClick={() => onNavigate?.()}
           >
-            <link.icon className="h-4 w-4 transition-transform duration-200 group-hover:scale-110" />
-            {link.label}
+            {({ isActive }) => (
+              <>
+                <link.icon className="h-5 w-5" />
+                <span>{link.label}</span>
+                {isActive ? <ChevronRight className="ml-auto h-4 w-4" /> : null}
+              </>
+            )}
           </NavLink>
         ))}
       </nav>
 
-      <div className="mt-auto rounded-2xl border border-border/60 bg-card/65 p-4 backdrop-blur-lg">
-        <p className="text-sm font-semibold">Daily Target</p>
-        <p className="mt-1 text-xs text-muted-foreground">Finish 30 min walk and hydrate 2.5L today.</p>
-        <div className="mt-4 h-2 overflow-hidden rounded-full bg-muted">
-          <div className="h-full w-[72%] rounded-full gradient-bg-primary" />
+      <div className="border-t border-border/60 p-4">
+        <div className="rounded-2xl border border-border/60 bg-card/70 p-3.5">
+          <p className="text-center text-sm text-muted-foreground">Upgrade to Pro</p>
+          <Button type="button" className="mt-2.5 h-10 w-full rounded-lg bg-primary text-sm text-primary-foreground">
+            Go Premium
+          </Button>
         </div>
-        <p className="mt-2 text-[11px] font-medium text-primary">72% completed</p>
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          className="mt-3 w-full"
-          onClick={() => {
-            onNavigate?.();
-            navigate("/login");
-          }}
-        >
-          <LogOut className="h-4 w-4" />
-          Log Out
-        </Button>
       </div>
     </div>
   );
