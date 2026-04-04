@@ -1,84 +1,132 @@
-import { motion } from "framer-motion";
-import { Bell, Settings, Shield, UserCircle2 } from "lucide-react";
+import { useState } from "react";
+import { Bell, Moon, Save, Settings, Shield, Sun, Target, User } from "lucide-react";
 import AppLayout from "@/components/AppLayout";
-
-const preferenceItems = [
-  { label: "Medication reminders", icon: Bell, status: "Enabled" },
-  { label: "Weekly health summary", icon: Settings, status: "Enabled" },
-  { label: "Data sharing with doctors", icon: Shield, status: "Private" },
-];
-
-const profileRows = [
-  { label: "Full Name", value: "Rahul Verma" },
-  { label: "Email", value: "rahul.verma@example.com" },
-  { label: "Age", value: "29" },
-  { label: "Primary Goal", value: "Improve cardiovascular endurance" },
-];
+import { Button } from "@/components/Button";
+import useTheme from "@/hooks/useTheme";
 
 const Profile = () => {
-  return (
-    <AppLayout
-      title="Profile"
-      subtitle="Manage your account details, personal goals, and health app preferences in one place."
-    >
-      <section className="grid gap-6 lg:grid-cols-3">
-        <motion.article
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="glass-card rounded-2xl p-6 lg:col-span-1"
-        >
-          <div className="flex flex-col items-center text-center">
-            <div className="mb-4 flex h-24 w-24 items-center justify-center rounded-full gradient-bg-primary">
-              <UserCircle2 className="h-12 w-12 text-primary-foreground" />
-            </div>
-            <h2 className="text-xl font-semibold">Rahul Verma</h2>
-            <p className="text-sm text-muted-foreground">Member since Jan 2026</p>
-            <span className="mt-4 rounded-full bg-health-teal/10 px-3 py-1 text-xs font-semibold text-health-teal">
-              Premium Plan
-            </span>
-          </div>
-        </motion.article>
+  const { theme, toggleTheme } = useTheme();
+  const [notifications, setNotifications] = useState(true);
+  const [twoFactor, setTwoFactor] = useState(false);
 
-        <motion.article
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.08 }}
-          className="glass-card rounded-2xl p-6 lg:col-span-2"
-        >
-          <h2 className="mb-4 text-xl font-semibold">Account Details</h2>
+  return (
+    <AppLayout title="Profile" subtitle="Update personal details, manage goals, and configure preferences.">
+      <section className="space-y-6">
+        <article className="glass-card rounded-3xl border-border/50 p-6">
+          <h2 className="mb-4 flex items-center gap-2 text-xl font-semibold">
+            <User className="h-5 w-5 text-primary" />
+            Personal Info
+          </h2>
           <div className="grid gap-4 sm:grid-cols-2">
-            {profileRows.map((row) => (
-              <div key={row.label} className="rounded-xl border border-border/60 bg-card/70 p-4">
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">{row.label}</p>
-                <p className="mt-1 text-sm font-medium">{row.value}</p>
+            <label className="space-y-1.5 text-sm">
+              <span className="text-xs text-muted-foreground">Full Name</span>
+              <input defaultValue="John Doe" className="h-11 w-full rounded-xl border border-border/60 bg-card px-3 outline-none focus:ring-2 focus:ring-primary/25" />
+            </label>
+            <label className="space-y-1.5 text-sm">
+              <span className="text-xs text-muted-foreground">Age</span>
+              <input defaultValue="32" className="h-11 w-full rounded-xl border border-border/60 bg-card px-3 outline-none focus:ring-2 focus:ring-primary/25" />
+            </label>
+            <label className="space-y-1.5 text-sm">
+              <span className="text-xs text-muted-foreground">Height</span>
+              <input defaultValue={"5'10\""} className="h-11 w-full rounded-xl border border-border/60 bg-card px-3 outline-none focus:ring-2 focus:ring-primary/25" />
+            </label>
+            <label className="space-y-1.5 text-sm">
+              <span className="text-xs text-muted-foreground">Weight</span>
+              <input defaultValue="175 lbs" className="h-11 w-full rounded-xl border border-border/60 bg-card px-3 outline-none focus:ring-2 focus:ring-primary/25" />
+            </label>
+          </div>
+          <Button type="button" className="mt-4 h-10 rounded-xl bg-primary px-4 text-primary-foreground">
+            <Save className="h-4 w-4" />
+            Save Changes
+          </Button>
+        </article>
+
+        <article className="glass-card rounded-3xl border-border/50 p-6">
+          <h2 className="mb-4 text-xl font-semibold">Health Summary</h2>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            {[
+              { label: "BMI", value: "24.1", status: "Normal" },
+              { label: "Avg Sleep", value: "7.2h", status: "Good" },
+              { label: "Activity", value: "High", status: "Excellent" },
+            ].map((summary) => (
+              <div key={summary.label} className="rounded-2xl border border-border/60 bg-card/55 p-4 text-center">
+                <p className="text-2xl font-bold">{summary.value}</p>
+                <p className="text-xs text-muted-foreground">{summary.label}</p>
+                <p className="mt-1 text-xs font-medium text-primary">{summary.status}</p>
               </div>
             ))}
           </div>
-        </motion.article>
-      </section>
+        </article>
 
-      <motion.section
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.18 }}
-        className="glass-card rounded-2xl p-6"
-      >
-        <h2 className="mb-4 text-xl font-semibold">Preferences</h2>
-        <div className="space-y-3">
-          {preferenceItems.map((item) => (
-            <div
-              key={item.label}
-              className="flex items-center justify-between rounded-xl border border-border/60 bg-card/70 p-4"
-            >
-              <span className="flex items-center gap-2 text-sm">
-                <item.icon className="h-4 w-4 text-health-indigo" />
-                {item.label}
-              </span>
-              <span className="rounded-full bg-secondary px-3 py-1 text-xs font-medium">{item.status}</span>
+        <article className="glass-card rounded-3xl border-border/50 p-6">
+          <h2 className="mb-4 flex items-center gap-2 text-xl font-semibold">
+            <Target className="h-5 w-5 text-health-cyan" />
+            Goals
+          </h2>
+          <div className="space-y-4">
+            {[
+              { label: "Daily Steps", current: 8432, target: 10000 },
+              { label: "Weight Goal", current: 175, target: 165 },
+              { label: "Weekly Workouts", current: 4, target: 5 },
+            ].map((goal) => (
+              <div key={goal.label}>
+                <div className="mb-1.5 flex items-center justify-between text-sm">
+                  <span>{goal.label}</span>
+                  <span className="text-muted-foreground">
+                    {goal.current} / {goal.target}
+                  </span>
+                </div>
+                <div className="h-2 overflow-hidden rounded-full bg-muted">
+                  <div className="h-full rounded-full bg-primary" style={{ width: `${Math.min((goal.current / goal.target) * 100, 100)}%` }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </article>
+
+        <article className="glass-card rounded-3xl border-border/50 p-6">
+          <h2 className="mb-4 flex items-center gap-2 text-xl font-semibold">
+            <Settings className="h-5 w-5 text-muted-foreground" />
+            Settings
+          </h2>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between rounded-2xl border border-border/60 bg-card/55 px-4 py-3">
+              <div className="flex items-center gap-3 text-sm">
+                {theme === "dark" ? <Moon className="h-5 w-5 text-health-indigo" /> : <Sun className="h-5 w-5 text-yellow-500" />}
+                Dark Mode
+              </div>
+              <Button type="button" variant="outline" className="h-8 rounded-lg px-3 text-xs" onClick={toggleTheme}>
+                {theme === "dark" ? "On" : "Off"}
+              </Button>
             </div>
-          ))}
-        </div>
-      </motion.section>
+
+            <div className="flex items-center justify-between rounded-2xl border border-border/60 bg-card/55 px-4 py-3">
+              <div className="flex items-center gap-3 text-sm">
+                <Bell className="h-5 w-5 text-health-violet" />
+                Push Notifications
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                className="h-8 rounded-lg px-3 text-xs"
+                onClick={() => setNotifications((prev) => !prev)}
+              >
+                {notifications ? "On" : "Off"}
+              </Button>
+            </div>
+
+            <div className="flex items-center justify-between rounded-2xl border border-border/60 bg-card/55 px-4 py-3">
+              <div className="flex items-center gap-3 text-sm">
+                <Shield className="h-5 w-5 text-health-teal" />
+                Two-Factor Authentication
+              </div>
+              <Button type="button" variant="outline" className="h-8 rounded-lg px-3 text-xs" onClick={() => setTwoFactor((prev) => !prev)}>
+                {twoFactor ? "On" : "Off"}
+              </Button>
+            </div>
+          </div>
+        </article>
+      </section>
     </AppLayout>
   );
 };
