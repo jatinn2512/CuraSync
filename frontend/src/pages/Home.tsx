@@ -173,7 +173,7 @@ const Home = () => {
       <Navbar onSectionClick={goToSection} />
 
       <main>
-        <section className="relative flex min-h-screen items-center overflow-hidden gradient-bg-hero pt-16">
+        <section className="relative flex min-h-screen items-center overflow-hidden gradient-bg-hero pt-[72px]">
           <div className="absolute left-10 top-20 h-72 w-72 animate-pulse_glow rounded-full bg-primary/10 blur-3xl" />
           <div
             className="absolute bottom-20 right-10 h-96 w-96 animate-pulse_glow rounded-full bg-accent/10 blur-3xl"
