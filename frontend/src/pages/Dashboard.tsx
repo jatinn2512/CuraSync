@@ -46,10 +46,19 @@ const quickActions = [
 const Dashboard = () => {
   const navigate = useNavigate();
   const maxSteps = Math.max(...weeklyData.map((row) => row.steps));
+  let displayName = "";
+
+  try {
+    displayName = window.localStorage.getItem("health-companion-user-name")?.trim() ?? "";
+  } catch {
+    displayName = "";
+  }
+
+  const resolvedName = displayName || "User";
 
   return (
-    <AppLayout title="Dashboard" subtitle="Here's your health overview for today.">
-      <section className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+    <AppLayout title={`Welcome back, ${resolvedName}`} subtitle="Here's your health overview for today." centerHeader>
+      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {stats.map((stat, index) => (
           <motion.article
             key={stat.label}
@@ -78,11 +87,11 @@ const Dashboard = () => {
         ))}
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-3">
+      <section className="grid gap-6 lg:grid-cols-3">
         <motion.article
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          className="glass-card rounded-3xl border-border/50 p-6 xl:col-span-2"
+          className="glass-card rounded-3xl border-border/50 p-6 lg:col-span-2"
         >
           <div className="mb-5 flex items-center justify-between">
             <h2 className="text-xl font-semibold">Weekly Activity</h2>
@@ -138,7 +147,7 @@ const Dashboard = () => {
 
       <section>
         <h2 className="mb-3 text-lg font-semibold">Quick Actions</h2>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {quickActions.map((action, index) => (
             <motion.div key={action.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 + 0.12 }}>
               <Button
