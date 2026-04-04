@@ -30,17 +30,27 @@ def _get_user_by_phone(db: Session, phone: str) -> User | None:
     return db.scalar(select(User).where(User.phone == phone.strip()))
 
 
+def _generate_placeholder_phone(db: Session) -> str:
+    while True:
+        candidate = f"9{uuid4().int % 1_000_000_000:09d}"
+        if not _get_user_by_phone(db, candidate):
+            return candidate
+
+
 def create_user(db: Session, payload: RegisterRequest) -> User:
     if _get_user_by_email(db, payload.email):
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already exists")
-    if _get_user_by_phone(db, payload.phone):
+
+    resolved_phone = payload.phone.strip() if payload.phone else _generate_placeholder_phone(db)
+    if _get_user_by_phone(db, resolved_phone):
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Phone already exists")
+    resolved_age = payload.age if payload.age is not None else 21
 
     user = User(
         full_name=payload.full_name.strip(),
-        phone=payload.phone.strip(),
+        phone=resolved_phone,
         email=payload.email.lower().strip(),
-        age=payload.age,
+        age=resolved_age,
         gender=payload.gender,
         hashed_password=hash_password(payload.password),
     )
