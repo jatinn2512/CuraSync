@@ -1,138 +1,158 @@
 import { motion } from "framer-motion";
 import {
   Activity,
-  CalendarCheck,
+  Flame,
+  Footprints,
   HeartPulse,
-  TrendingUp,
+  Moon,
+  Sparkles,
+  Stethoscope,
   UtensilsCrossed,
   Wind,
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import AppLayout from "@/components/AppLayout";
+import { Button } from "@/components/Button";
 
 const stats = [
-  {
-    label: "Heart Health",
-    value: "92%",
-    detail: "Excellent",
-    icon: HeartPulse,
-    color: "text-health-rose",
-  },
-  {
-    label: "Activity Score",
-    value: "8.4k",
-    detail: "Steps today",
-    icon: Activity,
-    color: "text-health-teal",
-  },
-  {
-    label: "Nutrition",
-    value: "1,840",
-    detail: "Calories",
-    icon: UtensilsCrossed,
-    color: "text-health-indigo",
-  },
-  {
-    label: "Air Quality",
-    value: "48",
-    detail: "AQI Moderate",
-    icon: Wind,
-    color: "text-health-cyan",
-  },
-];
+  { label: "Steps", value: "8,432", target: "10,000", icon: Footprints, color: "text-health-teal", bg: "bg-health-teal/12", percent: 84 },
+  { label: "Calories", value: "1,845", target: "2,200", icon: Flame, color: "text-health-rose", bg: "bg-health-rose/12", percent: 84 },
+  { label: "Sleep", value: "7.2h", target: "8h", icon: Moon, color: "text-health-indigo", bg: "bg-health-indigo/12", percent: 90 },
+  { label: "Heart Rate", value: "72", target: "bpm", icon: HeartPulse, color: "text-health-cyan", bg: "bg-health-cyan/12", percent: 100 },
+] as const;
 
-const dashboardMetrics = [
-  { label: "Hydration", pct: 76, color: "bg-health-cyan" },
-  { label: "Sleep Quality", pct: 88, color: "bg-health-indigo" },
-  { label: "Stress Balance", pct: 67, color: "bg-health-violet" },
-  { label: "Weekly Fitness", pct: 81, color: "bg-health-teal" },
-];
+const weeklyData = [
+  { day: "Mon", steps: 6200 },
+  { day: "Tue", steps: 8400 },
+  { day: "Wed", steps: 7100 },
+  { day: "Thu", steps: 9200 },
+  { day: "Fri", steps: 8432 },
+  { day: "Sat", steps: 5600 },
+  { day: "Sun", steps: 3200 },
+] as const;
 
-const tasks = [
-  "Morning breathing session - 10 mins",
-  "Log lunch nutrition",
-  "Evening 30 min walk",
-  "Medication reminder at 9:00 PM",
-];
+const insights = [
+  { text: "Your sleep quality improved 12% this week. Keep maintaining your bedtime routine.", type: "positive" },
+  { text: "Water intake is below target. Add two more glasses before evening.", type: "warning" },
+  { text: "Great consistency: you hit your step goal on 4 out of the last 7 days.", type: "positive" },
+] as const;
+
+const quickActions = [
+  { label: "Log Symptoms", icon: Stethoscope, path: "/health" },
+  { label: "Add Meal", icon: UtensilsCrossed, path: "/food" },
+  { label: "Check AQI", icon: Wind, path: "/aqi" },
+] as const;
 
 const Dashboard = () => {
+  const navigate = useNavigate();
+  const maxSteps = Math.max(...weeklyData.map((row) => row.steps));
+
   return (
-    <AppLayout
-      title="Dashboard"
-      subtitle="Your complete health snapshot in one place. Track progress, monitor habits, and act on insights."
-    >
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <AppLayout title="Dashboard" subtitle="Here's your health overview for today.">
+      <section className="grid grid-cols-2 gap-4 xl:grid-cols-4">
         {stats.map((stat, index) => (
           <motion.article
             key={stat.label}
-            initial={{ opacity: 0, y: 16 }}
+            initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.08 }}
-            className="glass-card rounded-2xl p-5"
+            transition={{ delay: index * 0.06 }}
+            className="glass-card rounded-3xl border-border/50 p-5"
           >
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-muted-foreground">{stat.label}</p>
-              <stat.icon className={`h-5 w-5 ${stat.color}`} />
+            <div className="mb-4 flex items-center justify-between">
+              <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${stat.bg}`}>
+                <stat.icon className={`h-5 w-5 ${stat.color}`} />
+              </div>
+              <span className="text-xs font-medium text-muted-foreground">{stat.target}</span>
             </div>
-            <p className="mt-3 text-3xl font-bold">{stat.value}</p>
-            <p className="mt-1 text-sm text-muted-foreground">{stat.detail}</p>
+            <p className="text-2xl font-bold">{stat.value}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{stat.label}</p>
+            <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${stat.percent}%` }}
+                transition={{ duration: 0.6 }}
+                className="h-full rounded-full bg-primary"
+              />
+            </div>
           </motion.article>
         ))}
       </section>
 
-      <section className="grid gap-6 lg:grid-cols-3">
+      <section className="grid gap-6 xl:grid-cols-3">
         <motion.article
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="glass-card rounded-2xl p-6 lg:col-span-2"
+          className="glass-card rounded-3xl border-border/50 p-6 xl:col-span-2"
         >
           <div className="mb-5 flex items-center justify-between">
-            <h2 className="text-xl font-semibold">Progress Overview</h2>
-            <span className="inline-flex items-center gap-1 rounded-full bg-health-teal/10 px-3 py-1 text-xs font-semibold text-health-teal">
-              <TrendingUp className="h-3.5 w-3.5" />
-              Improving
+            <h2 className="text-xl font-semibold">Weekly Activity</h2>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-health-teal/12 px-3 py-1 text-xs font-semibold text-health-teal">
+              <Activity className="h-3.5 w-3.5" />
+              Active Trend
             </span>
           </div>
 
-          <div className="space-y-5">
-            {dashboardMetrics.map((metric) => (
-              <div key={metric.label}>
-                <div className="mb-1.5 flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">{metric.label}</span>
-                  <span className="font-medium">{metric.pct}%</span>
-                </div>
-                <div className="h-2.5 overflow-hidden rounded-full bg-muted">
+          <div className="h-56 rounded-2xl border border-border/60 bg-card/55 p-4">
+            <div className="flex h-full items-end gap-3">
+              {weeklyData.map((row) => (
+                <div key={row.day} className="flex h-full flex-1 flex-col justify-end">
                   <motion.div
-                    className={`h-full rounded-full ${metric.color}`}
-                    initial={{ width: 0 }}
-                    animate={{ width: `${metric.pct}%` }}
+                    initial={{ height: 0 }}
+                    animate={{ height: `${Math.round((row.steps / maxSteps) * 100)}%` }}
                     transition={{ duration: 0.7 }}
+                    className="min-h-5 rounded-t-lg bg-health-teal/85"
                   />
+                  <p className="mt-2 text-center text-[11px] font-medium text-muted-foreground">{row.day}</p>
                 </div>
+              ))}
+            </div>
+          </div>
+        </motion.article>
+
+        <motion.article
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.08 }}
+          className="glass-card rounded-3xl border-border/50 p-6"
+        >
+          <h2 className="mb-4 flex items-center gap-2 text-xl font-semibold">
+            <Sparkles className="h-5 w-5 text-health-violet" />
+            AI Insights
+          </h2>
+          <div className="space-y-3">
+            {insights.map((insight) => (
+              <div
+                key={insight.text}
+                className={`rounded-2xl p-3 text-sm leading-relaxed ${
+                  insight.type === "positive"
+                    ? "bg-health-teal/10 text-health-teal"
+                    : "bg-health-rose/10 text-health-rose"
+                }`}
+              >
+                {insight.text}
               </div>
             ))}
           </div>
         </motion.article>
+      </section>
 
-        <motion.article
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.26 }}
-          className="glass-card rounded-2xl p-6"
-        >
-          <div className="mb-5 flex items-center gap-2">
-            <CalendarCheck className="h-5 w-5 text-health-indigo" />
-            <h2 className="text-xl font-semibold">Today Plan</h2>
-          </div>
-
-          <ul className="space-y-3">
-            {tasks.map((task) => (
-              <li key={task} className="rounded-xl border border-border/60 bg-card/70 p-3 text-sm">
-                {task}
-              </li>
-            ))}
-          </ul>
-        </motion.article>
+      <section>
+        <h2 className="mb-3 text-lg font-semibold">Quick Actions</h2>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          {quickActions.map((action, index) => (
+            <motion.div key={action.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 + 0.12 }}>
+              <Button
+                type="button"
+                variant="outline"
+                className="h-20 w-full flex-col gap-2 rounded-2xl border-border/60 bg-card/65"
+                onClick={() => navigate(action.path)}
+              >
+                <action.icon className="h-5 w-5 text-primary" />
+                <span className="text-xs font-semibold">{action.label}</span>
+              </Button>
+            </motion.div>
+          ))}
+        </div>
       </section>
     </AppLayout>
   );
