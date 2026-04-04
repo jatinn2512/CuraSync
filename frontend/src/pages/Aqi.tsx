@@ -87,7 +87,7 @@ const Aqi = () => {
         </div>
       </section>
 
-      <section className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {pollutants.map((pollutant, index) => (
           <motion.article
             key={pollutant.name}
@@ -104,8 +104,8 @@ const Aqi = () => {
         ))}
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-3">
-        <article className="glass-card rounded-3xl border-border/50 p-6 xl:col-span-2">
+      <section className="grid gap-6 lg:grid-cols-3">
+        <article className="glass-card rounded-3xl border-border/50 p-6 lg:col-span-2">
           <h2 className="mb-4 text-xl font-semibold">Hourly AQI Trend</h2>
           <div className="grid h-52 grid-cols-6 items-end gap-3 rounded-2xl border border-border/60 bg-card/45 p-4">
             {hourlyTrend.map((item) => (
