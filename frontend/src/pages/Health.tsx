@@ -53,7 +53,7 @@ const Health = () => {
 
   return (
     <AppLayout title="Health" subtitle="Monitor vitals, track symptoms, and get AI-backed recommendations.">
-      <section className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {metrics.map((metric, index) => (
           <motion.article
             key={metric.label}
@@ -75,14 +75,14 @@ const Health = () => {
         ))}
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-2">
+      <section className="grid gap-6 lg:grid-cols-2">
         <motion.article initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="glass-card rounded-3xl border-border/50 p-6">
           <h2 className="mb-4 flex items-center gap-2 text-xl font-semibold">
             <Stethoscope className="h-5 w-5 text-primary" />
             Symptom Checker
           </h2>
 
-          <div className="mb-4 h-72 space-y-3 overflow-y-auto rounded-2xl border border-border/60 bg-card/45 p-3">
+          <div className="mb-4 h-60 space-y-3 overflow-y-auto rounded-2xl border border-border/60 bg-card/45 p-3 sm:h-72">
             {messages.map((message, index) => (
               <motion.div
                 key={`${message.role}-${index}`}
@@ -159,7 +159,7 @@ const Health = () => {
           <Sparkles className="h-5 w-5 text-health-violet" />
           AI Recommendations
         </h2>
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {[
             "Limit screen usage one hour before sleep for better recovery.",
             "Your heart trend is stable. Continue current workout frequency.",
