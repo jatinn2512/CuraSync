@@ -28,24 +28,24 @@ const Navbar = ({ onSectionClick }: NavbarProps) => {
   return (
     <nav className="fixed left-0 right-0 top-0 z-50 border-b border-border/50 bg-card/60 backdrop-blur-2xl">
       <div className="absolute inset-x-0 bottom-0 h-px bg-border/80" />
-      <div className="container flex h-16 items-center justify-between">
+      <div className="container flex h-[72px] items-center justify-between">
         <button
           type="button"
-          className="group flex items-center gap-2.5 font-display text-lg font-bold"
+          className="group flex items-center gap-2.5 font-display text-[20px] font-bold leading-none"
           onClick={() => navigate("/")}
         >
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl transition-transform duration-300 group-hover:scale-105 glow-primary gradient-bg-primary">
-            <Activity className="h-5 w-5 text-primary-foreground" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl transition-transform duration-300 group-hover:scale-105 glow-primary gradient-bg-primary">
+            <Activity className="h-[22px] w-[22px] text-primary-foreground" />
           </div>
           <span>CuraSync</span>
         </button>
 
-        <div className="hidden items-center gap-7 md:flex">
+        <div className="hidden items-center gap-8 md:flex">
           {navLinks.map((link) => (
             <a
               key={link.href}
               href={link.href}
-              className="relative text-sm font-semibold text-muted-foreground transition-colors hover:text-foreground"
+              className="relative text-[16px] font-semibold leading-none text-muted-foreground transition-colors hover:text-foreground"
               onClick={(event) => {
                 event.preventDefault();
                 handleSectionClick(link.section);
@@ -56,14 +56,13 @@ const Navbar = ({ onSectionClick }: NavbarProps) => {
           ))}
         </div>
 
-        <div className="hidden items-center gap-2 md:flex">
-          <ThemeToggle compact />
-          <Button variant="ghost" size="sm" onClick={() => navigate("/login")}>
+        <div className="hidden items-center gap-3 md:flex">
+          <ThemeToggle compact className="h-10 w-10 rounded-xl" />
+          <Button variant="ghost" className="h-10 rounded-xl px-3.5 text-sm" onClick={() => navigate("/login")}>
             Log In
           </Button>
           <Button
-            size="sm"
-            className="border-0 gradient-bg-primary text-primary-foreground"
+            className="h-10 rounded-xl border-0 px-3.5 text-sm gradient-bg-primary text-primary-foreground"
             onClick={() => navigate("/login")}
           >
             Get Started
@@ -76,7 +75,7 @@ const Navbar = ({ onSectionClick }: NavbarProps) => {
           onClick={() => setMobileOpen((open) => !open)}
           aria-label="Toggle menu"
         >
-          {mobileOpen ? <X size={22} /> : <Menu size={22} />}
+          {mobileOpen ? <X size={24} /> : <Menu size={24} />}
         </button>
       </div>
 
@@ -94,7 +93,7 @@ const Navbar = ({ onSectionClick }: NavbarProps) => {
                 <a
                   key={link.href}
                   href={link.href}
-                  className="py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+                  className="py-2 text-[15px] font-medium text-muted-foreground transition-colors hover:text-foreground"
                   onClick={(event) => {
                     event.preventDefault();
                     handleSectionClick(link.section);
@@ -107,8 +106,7 @@ const Navbar = ({ onSectionClick }: NavbarProps) => {
               <div className="flex gap-3 pt-1">
                 <Button
                   variant="ghost"
-                  size="sm"
-                  className="flex-1"
+                  className="h-10 flex-1 rounded-xl text-sm"
                   onClick={() => {
                     setMobileOpen(false);
                     navigate("/login");
@@ -117,8 +115,7 @@ const Navbar = ({ onSectionClick }: NavbarProps) => {
                   Log In
                 </Button>
                 <Button
-                  size="sm"
-                  className="flex-1 border-0 gradient-bg-primary text-primary-foreground"
+                  className="h-10 flex-1 rounded-xl border-0 text-sm gradient-bg-primary text-primary-foreground"
                   onClick={() => {
                     setMobileOpen(false);
                     navigate("/login");
