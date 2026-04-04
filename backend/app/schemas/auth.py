@@ -1,15 +1,22 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 
 class RegisterRequest(BaseModel):
     full_name: str = Field(min_length=2, max_length=120)
-    phone: str = Field(min_length=7, max_length=20)
+    phone: str | None = Field(default=None, min_length=7, max_length=20)
     email: EmailStr
-    age: int = Field(ge=18, le=100)
+    age: int | None = Field(default=None, ge=18, le=100)
     gender: str | None = Field(default=None, max_length=20)
-    password: str = Field(min_length=8, max_length=128)
+    password: str = Field(max_length=128)
+
+    @field_validator("password")
+    @classmethod
+    def validate_password(cls, value: str) -> str:
+        if len(value) < 8:
+            raise ValueError("Password must be at least 8 characters.")
+        return value
 
 
 class LoginRequest(BaseModel):
@@ -17,8 +24,29 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ForgotPasswordResponse(BaseModel):
+    message: str
+    reset_token: str | None = None
+
+
 class RefreshRequest(BaseModel):
     refresh_token: str
+
+
+class ResetPasswordRequest(BaseModel):
+    reset_token: str
+    new_password: str = Field(max_length=128)
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_new_password(cls, value: str) -> str:
+        if len(value) < 8:
+            raise ValueError("Password must be at least 8 characters.")
+        return value
 
 
 class TokenResponse(BaseModel):
