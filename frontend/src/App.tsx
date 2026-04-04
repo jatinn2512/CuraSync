@@ -8,7 +8,10 @@ import Food from "./pages/Food";
 import Aqi from "./pages/Aqi";
 import Community from "./pages/Community";
 import Profile from "./pages/Profile";
+import Settings from "./pages/Settings";
+import About from "./pages/About";
 import Login from "./pages/Login";
+import Register from "./pages/Register";
 import NotFound from "./pages/NotFound";
 import PageTransition from "./components/PageTransition";
 
@@ -31,6 +34,14 @@ const AnimatedRoutes = () => {
           element={
             <PageTransition>
               <Login />
+            </PageTransition>
+          }
+        />
+        <Route
+          path="/register"
+          element={
+            <PageTransition>
+              <Register />
             </PageTransition>
           }
         />
@@ -87,6 +98,22 @@ const AnimatedRoutes = () => {
           element={
             <PageTransition>
               <Profile />
+            </PageTransition>
+          }
+        />
+        <Route
+          path="/settings"
+          element={
+            <PageTransition>
+              <Settings />
+            </PageTransition>
+          }
+        />
+        <Route
+          path="/about"
+          element={
+            <PageTransition>
+              <About />
             </PageTransition>
           }
         />
