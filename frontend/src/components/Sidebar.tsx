@@ -68,7 +68,14 @@ const Sidebar = ({ onNavigate }: SidebarProps) => {
       <div className="border-t border-border/60 p-4">
         <div className="rounded-2xl border border-border/60 bg-card/70 p-3.5">
           <p className="text-center text-sm text-muted-foreground">Upgrade to Pro</p>
-          <Button type="button" className="mt-2.5 h-10 w-full rounded-lg bg-primary text-sm text-primary-foreground">
+          <Button
+            type="button"
+            className="mt-2.5 h-10 w-full rounded-lg bg-primary text-sm text-primary-foreground"
+            onClick={() => {
+              onNavigate?.();
+              navigate("/pricing");
+            }}
+          >
             Go Premium
           </Button>
         </div>
