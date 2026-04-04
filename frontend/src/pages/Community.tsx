@@ -86,8 +86,8 @@ const Community = () => {
 
   return (
     <AppLayout title="Community" subtitle="Share your journey, connect with others, and stay motivated.">
-      <section className="grid gap-6 xl:grid-cols-3">
-        <div className="space-y-4 xl:col-span-2">
+      <section className="grid gap-6 lg:grid-cols-3">
+        <div className="space-y-4 lg:col-span-2">
           <article className="glass-card rounded-3xl border-border/50 p-4">
             <textarea
               value={newPost}
@@ -142,7 +142,7 @@ const Community = () => {
           ))}
         </div>
 
-        <aside className="glass-card h-fit rounded-3xl border-border/50 p-5 xl:sticky xl:top-24">
+        <aside className="glass-card h-fit rounded-3xl border-border/50 p-5 lg:sticky lg:top-24">
           <h2 className="mb-4 flex items-center gap-2 text-xl font-semibold">
             <TrendingUp className="h-5 w-5 text-primary" />
             Trending Topics
