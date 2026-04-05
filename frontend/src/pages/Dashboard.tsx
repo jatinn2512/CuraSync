@@ -13,6 +13,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/Button";
+import { useAuth } from "@/lib/authContext";
 
 const stats = [
   { label: "Steps", value: "8,432", target: "10,000", icon: Footprints, color: "text-health-teal", bg: "bg-health-teal/12", percent: 84 },
@@ -45,16 +46,9 @@ const quickActions = [
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const maxSteps = Math.max(...weeklyData.map((row) => row.steps));
-  let displayName = "";
-
-  try {
-    displayName = window.localStorage.getItem("health-companion-user-name")?.trim() ?? "";
-  } catch {
-    displayName = "";
-  }
-
-  const resolvedName = displayName || "User";
+  const resolvedName = user?.full_name || "User";
 
   return (
     <AppLayout title={`Welcome back, ${resolvedName}`} subtitle="Here's your health overview for today." centerHeader>
