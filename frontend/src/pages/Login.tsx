@@ -3,56 +3,32 @@ import { Activity, Eye, EyeOff, Lock, Mail, X } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/Button";
 import heroImg from "@/assets/hero-health-ai.png";
-import { getApiBaseUrl, isAuthenticated, saveAuthSession } from "@/lib/auth";
-
-const getErrorMessage = (payload: unknown, fallback: string): string => {
-  if (typeof payload === "object" && payload && "detail" in payload) {
-    const detail = (payload as { detail?: unknown }).detail;
-    if (typeof detail === "string" && detail.trim()) {
-      const normalized = detail.trim();
-      if (normalized.toLowerCase().includes("email")) {
-        return "Invalid email. Email must contain @.";
-      }
-      return normalized;
-    }
-    if (Array.isArray(detail) && detail.length > 0) {
-      const first = detail[0];
-      if (typeof first === "object" && first && "msg" in first) {
-        const msg = (first as { msg?: unknown }).msg;
-        if (typeof msg === "string" && msg.trim()) {
-          const normalized = msg.trim().toLowerCase();
-          if (normalized.includes("email")) {
-            return "Invalid email. Email must contain @.";
-          }
-          return msg.trim();
-        }
-      }
-    }
-  }
-  return fallback;
-};
+import { useAuth } from "@/lib/authContext";
 
 const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { login, isAuthenticated, isLoading: authLoading } = useAuth();
+  
   const [showPassword, setShowPassword] = useState(false);
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  
   const redirectTo = useMemo(() => {
     const state = location.state as { from?: string } | null;
     return state?.from || "/dashboard";
   }, [location.state]);
 
   useEffect(() => {
-    if (isAuthenticated()) {
+    if (isAuthenticated && !authLoading) {
       navigate("/dashboard", { replace: true });
     }
-  }, [navigate]);
+  }, [isAuthenticated, authLoading, navigate]);
 
   const onLogin = async () => {
-    if (isSigningIn) return;
+    if (isSigningIn || authLoading) return;
 
     const normalizedEmail = email.trim().toLowerCase();
     if (!normalizedEmail || !password) {
@@ -68,53 +44,19 @@ const Login = () => {
     setIsSigningIn(true);
 
     try {
-      const baseUrl = getApiBaseUrl();
-      const response = await fetch(`${baseUrl}/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: normalizedEmail, password }),
-      });
-
-      if (!response.ok) {
-        let detail = "Invalid email or password.";
-        try {
-          const payload = (await response.json()) as unknown;
-          detail = getErrorMessage(payload, detail);
-        } catch {
-          // Keep fallback message.
-        }
-        throw new Error(detail);
-      }
-
-      const tokenPayload = (await response.json()) as { access_token: string; refresh_token: string };
-      let fullName = normalizedEmail.split("@")[0] || "User";
-
-      try {
-        const meResponse = await fetch(`${baseUrl}/auth/me`, {
-          headers: { Authorization: `Bearer ${tokenPayload.access_token}` },
-        });
-        if (meResponse.ok) {
-          const me = (await meResponse.json()) as { full_name?: string };
-          if (me.full_name?.trim()) {
-            fullName = me.full_name.trim();
-          }
-        }
-      } catch {
-        // Login token is enough to continue.
-      }
-
-      saveAuthSession(tokenPayload.access_token, tokenPayload.refresh_token, fullName);
+      await login(normalizedEmail, password);
       navigate(redirectTo, { replace: true });
     } catch (error) {
-      if (error instanceof TypeError) {
-        setErrorMessage("Login failed. Please try again.");
-      } else if (error instanceof Error) {
-        setErrorMessage(error.message);
-      } else {
-        setErrorMessage("Invalid email or password.");
-      }
+      const errorMsg = error instanceof Error ? error.message : "Invalid email or password.";
+      setErrorMessage(errorMsg);
     } finally {
       setIsSigningIn(false);
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !isSigningIn && !authLoading) {
+      onLogin();
     }
   };
 
@@ -177,6 +119,7 @@ const Login = () => {
                     placeholder="Enter your Email"
                     value={email}
                     onChange={(event) => setEmail(event.target.value)}
+                    onKeyPress={handleKeyPress}
                     className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
                   />
                 </div>
@@ -194,6 +137,7 @@ const Login = () => {
                     placeholder="Enter your Password"
                     value={password}
                     onChange={(event) => setPassword(event.target.value)}
+                    onKeyPress={handleKeyPress}
                     className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
                   />
                   <button
@@ -213,11 +157,11 @@ const Login = () => {
 
               <Button
                 type="button"
-                className="h-12 w-full rounded-full border-0 bg-emerald-700 text-lg font-semibold text-white hover:bg-emerald-800"
+                className="h-12 w-full rounded-full border-0 bg-emerald-700 text-lg font-semibold text-white hover:bg-emerald-800 disabled:opacity-50"
                 onClick={onLogin}
-                disabled={isSigningIn}
+                disabled={isSigningIn || authLoading}
               >
-                {isSigningIn ? "Signing in..." : "Sign in"}
+                {isSigningIn || authLoading ? "Signing in..." : "Sign in"}
               </Button>
 
               <Button
