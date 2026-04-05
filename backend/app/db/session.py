@@ -1,7 +1,7 @@
 from collections.abc import Generator
 from pathlib import Path
 
-from sqlalchemy import create_engine, event
+from sqlalchemy import create_engine, event, inspect, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
@@ -67,6 +67,32 @@ def get_tracking_db() -> Generator[Session, None, None]:
         db.close()
 
 
+def _apply_sqlite_schema_patches() -> None:
+    if not settings.core_db_url.startswith("sqlite"):
+        return
+
+    inspector = inspect(core_engine)
+    if "users" not in inspector.get_table_names():
+        return
+
+    existing_columns = {column["name"] for column in inspector.get_columns("users")}
+    statements: list[str] = []
+
+    if "token_version" not in existing_columns:
+        statements.append("ALTER TABLE users ADD COLUMN token_version INTEGER NOT NULL DEFAULT 0")
+    if "is_active" not in existing_columns:
+        statements.append("ALTER TABLE users ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT 1")
+    if "last_login_at" not in existing_columns:
+        statements.append("ALTER TABLE users ADD COLUMN last_login_at DATETIME")
+
+    if not statements:
+        return
+
+    with core_engine.begin() as connection:
+        for statement in statements:
+            connection.execute(text(statement))
+
+
 def init_db() -> None:
     from app.models import (  # noqa: F401
         aqi_snapshot,
@@ -78,4 +104,5 @@ def init_db() -> None:
     )
 
     CoreBase.metadata.create_all(bind=core_engine)
+    _apply_sqlite_schema_patches()
     TrackingBase.metadata.create_all(bind=tracking_engine)
