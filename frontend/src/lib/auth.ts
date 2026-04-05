@@ -1,5 +1,5 @@
 const ACCESS_TOKEN_KEY = "curasync-access-token";
-const REFRESH_TOKEN_KEY = "curasync-refresh-token";
+export const REFRESH_TOKEN_KEY = "curasync-refresh-token";
 const USER_NAME_KEY = "health-companion-user-name";
 
 export const getApiBaseUrl = (): string => {
@@ -39,4 +39,3 @@ export const clearAuthSession = (): void => {
     // Ignore storage errors in private modes.
   }
 };
-
