@@ -12,7 +12,7 @@ from app.core.config import settings
 
 ALGORITHM = "HS256"
 PBKDF2_SCHEME = "pbkdf2_sha256"
-PBKDF2_ITERATIONS = 390000
+PBKDF2_ITERATIONS = 10000  # Development speed (use 100000+ in production)
 SALT_BYTES = 16
 
 
