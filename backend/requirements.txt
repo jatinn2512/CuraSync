@@ -6,3 +6,7 @@ alembic
 python-jose[cryptography]
 email-validator
 pydantic-settings
+scikit-learn
+joblib
+pandas
+numpy
