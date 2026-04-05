@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends, Request, Response
+from typing import Literal
+
+from fastapi import APIRouter, Depends, Query, Request, Response
 from sqlalchemy.orm import Session
 
 from app.db.session import get_core_db, get_tracking_db
@@ -87,12 +89,13 @@ def update_settings(
 
 @router.get("/export/pdf")
 def export_user_data_pdf(
+    scope: Literal["complete", "weekly", "this_month"] = Query(default="complete"),
     current_user: User = Depends(auth_service.get_current_user),
     core_db: Session = Depends(get_core_db),
     tracking_db: Session = Depends(get_tracking_db),
 ):
-    pdf_data = auth_service.export_user_data_pdf(core_db, tracking_db, current_user)
-    filename = f"curasync-user-data-{current_user.id}.pdf"
+    pdf_data = auth_service.export_user_data_pdf(core_db, tracking_db, current_user, scope=scope)
+    filename = f"curasync-user-data-{scope}-{current_user.id}.pdf"
     return Response(
         content=pdf_data,
         media_type="application/pdf",
