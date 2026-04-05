@@ -1,19 +1,87 @@
-import { useState } from "react";
-import { Bell, Download, Globe, Info, LockKeyhole, Moon, Shield, SlidersHorizontal, Sun } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Bell, Globe, Info, LockKeyhole, Moon, Shield, SlidersHorizontal, Sun } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/Button";
 import useTheme from "@/hooks/useTheme";
+import { useAuth } from "@/lib/authContext";
+import { apiClient } from "@/lib/apiClient";
+
+type UserSettingsResponse = {
+  id: number;
+  user_id: number;
+  theme: string;
+  units: string;
+  notifications_enabled: boolean;
+  email_alerts_enabled: boolean;
+  community_visibility: string;
+  location_access_for_aqi: boolean;
+};
 
 const Settings = () => {
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
+  const { logout } = useAuth();
+
   const [pushNotifications, setPushNotifications] = useState(true);
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [medicationReminders, setMedicationReminders] = useState(true);
   const [twoFactor, setTwoFactor] = useState(false);
   const [communityVisibility, setCommunityVisibility] = useState(true);
   const [locationAccess, setLocationAccess] = useState(true);
+
+  // Load user settings on mount
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const response = await apiClient.get<UserSettingsResponse>("/auth/settings");
+        if (response.error || !response.data) {
+          throw new Error(response.error || "Failed to load settings");
+        }
+
+        setPushNotifications(response.data.notifications_enabled ?? true);
+        setEmailNotifications(response.data.email_alerts_enabled ?? true);
+        setLocationAccess(response.data.location_access_for_aqi ?? true);
+        setCommunityVisibility(response.data.community_visibility === "public");
+      } catch (err) {
+        console.error("Failed to load settings:", err);
+      }
+    };
+
+    loadSettings();
+  }, []);
+
+  const handleToggle = async (settingKey: string, value: boolean) => {
+    try {
+      const updatePayload: Record<string, unknown> = {};
+
+      if (settingKey === "notifications") {
+        setPushNotifications(value);
+        updatePayload.notifications_enabled = value;
+      } else if (settingKey === "email_alerts") {
+        setEmailNotifications(value);
+        updatePayload.email_alerts_enabled = value;
+      } else if (settingKey === "location_aqi") {
+        setLocationAccess(value);
+        updatePayload.location_access_for_aqi = value;
+      } else if (settingKey === "community_visibility") {
+        setCommunityVisibility(value);
+        updatePayload.community_visibility = value ? "public" : "friends";
+      }
+
+      const response = await apiClient.patch<UserSettingsResponse>("/auth/settings", updatePayload);
+      if (response.error) {
+        throw new Error(response.error);
+      }
+    } catch (err) {
+      console.error("Failed to update settings:", err);
+    }
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    navigate("/login");
+  };
 
   return (
     <AppLayout title="Settings" subtitle="Manage app preferences, privacy controls, and account behavior.">
@@ -62,12 +130,12 @@ const Settings = () => {
               {
                 label: "Push Notifications",
                 value: pushNotifications,
-                onToggle: () => setPushNotifications((prev) => !prev),
+                onToggle: () => handleToggle("notifications", !pushNotifications),
               },
               {
                 label: "Email Summaries",
                 value: emailNotifications,
-                onToggle: () => setEmailNotifications((prev) => !prev),
+                onToggle: () => handleToggle("email_alerts", !emailNotifications),
               },
               {
                 label: "Medication Reminders",
@@ -102,12 +170,12 @@ const Settings = () => {
               {
                 label: "Community Profile Visibility",
                 value: communityVisibility,
-                onToggle: () => setCommunityVisibility((prev) => !prev),
+                onToggle: () => handleToggle("community_visibility", !communityVisibility),
               },
               {
                 label: "Location Access for AQI",
                 value: locationAccess,
-                onToggle: () => setLocationAccess((prev) => !prev),
+                onToggle: () => handleToggle("location_aqi", !locationAccess),
               },
             ].map((item) => (
               <div key={item.label} className="flex items-center justify-between rounded-2xl border border-border/60 bg-card/55 px-4 py-3">
@@ -117,6 +185,15 @@ const Settings = () => {
                 </Button>
               </div>
             ))}
+            <Button
+              type="button"
+              variant="outline"
+              className="h-10 w-full rounded-xl text-sm"
+              onClick={() => navigate("/about")}
+            >
+              <Info className="h-4 w-4" />
+              About & Privacy
+            </Button>
           </div>
         </article>
 
@@ -143,18 +220,12 @@ const Settings = () => {
                 Enabled
               </Button>
             </div>
-            <Button type="button" className="h-10 w-full rounded-xl bg-primary text-sm text-primary-foreground">
-              <Download className="h-4 w-4" />
-              Export Health Data
-            </Button>
             <Button
               type="button"
-              variant="outline"
-              className="h-10 w-full rounded-xl text-sm"
-              onClick={() => navigate("/about")}
+              className="h-10 w-full rounded-xl bg-red-600/20 text-red-500 text-sm"
+              onClick={handleLogout}
             >
-              <Info className="h-4 w-4" />
-              About & Privacy
+              Logout
             </Button>
           </div>
         </article>
