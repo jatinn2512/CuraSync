@@ -3,43 +3,12 @@ import { Activity, Eye, EyeOff, Lock, Mail, UserRound, X } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/Button";
 import heroImg from "@/assets/hero-health-ai.png";
-import { getApiBaseUrl, saveAuthSession } from "@/lib/auth";
-
-const getErrorMessage = (payload: unknown, fallback: string): string => {
-  if (typeof payload === "object" && payload && "detail" in payload) {
-    const detail = (payload as { detail?: unknown }).detail;
-    if (typeof detail === "string" && detail.trim()) {
-      const normalized = detail.trim().toLowerCase();
-      if (normalized.includes("password") && (normalized.includes("least") || normalized.includes("8"))) {
-        return "Password must be at least 8 characters.";
-      }
-      if (normalized.includes("email")) {
-        return "Invalid email. Email must contain @.";
-      }
-      return detail.trim();
-    }
-    if (Array.isArray(detail) && detail.length > 0) {
-      const first = detail[0];
-      if (typeof first === "object" && first && "msg" in first) {
-        const msg = (first as { msg?: unknown }).msg;
-        if (typeof msg === "string" && msg.trim()) {
-          const normalized = msg.trim().toLowerCase();
-          if (normalized.includes("password") && (normalized.includes("least") || normalized.includes("8"))) {
-            return "Password must be at least 8 characters.";
-          }
-          if (normalized.includes("email")) {
-            return "Invalid email. Email must contain @.";
-          }
-          return msg.trim();
-        }
-      }
-    }
-  }
-  return fallback;
-};
+import { useAuth } from "@/lib/authContext";
 
 const Register = () => {
   const navigate = useNavigate();
+  const { register, isLoading: authLoading } = useAuth();
+  
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
@@ -50,7 +19,7 @@ const Register = () => {
   const [errorMessage, setErrorMessage] = useState("");
 
   const onCreateAccount = async () => {
-    if (isCreating) return;
+    if (isCreating || authLoading) return;
 
     const trimmedName = fullName.trim();
     const normalizedEmail = email.trim().toLowerCase();
@@ -76,58 +45,23 @@ const Register = () => {
     setIsCreating(true);
 
     try {
-      const baseUrl = getApiBaseUrl();
-      const registerResponse = await fetch(`${baseUrl}/auth/register`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          full_name: trimmedName,
-          email: normalizedEmail,
-          password,
-        }),
+      await register({
+        full_name: trimmedName,
+        email: normalizedEmail,
+        password,
       });
-
-      if (!registerResponse.ok) {
-        let detail = "Unable to register.";
-        try {
-          const payload = (await registerResponse.json()) as unknown;
-          detail = getErrorMessage(payload, detail);
-        } catch {
-          // Keep fallback message.
-        }
-        throw new Error(detail);
-      }
-
-      const loginResponse = await fetch(`${baseUrl}/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: normalizedEmail, password }),
-      });
-
-      if (!loginResponse.ok) {
-        let detail = "Account created, but auto-login failed.";
-        try {
-          const payload = (await loginResponse.json()) as unknown;
-          detail = getErrorMessage(payload, detail);
-        } catch {
-          // Keep fallback message.
-        }
-        throw new Error(detail);
-      }
-
-      const tokenPayload = (await loginResponse.json()) as { access_token: string; refresh_token: string };
-      saveAuthSession(tokenPayload.access_token, tokenPayload.refresh_token, trimmedName);
       navigate("/dashboard", { replace: true });
     } catch (error) {
-      if (error instanceof TypeError) {
-        setErrorMessage("Registration failed. Please try again.");
-      } else if (error instanceof Error) {
-        setErrorMessage(error.message);
-      } else {
-        setErrorMessage("Registration failed. Please try again.");
-      }
+      const errorMsg = error instanceof Error ? error.message : "Registration failed. Please try again.";
+      setErrorMessage(errorMsg);
     } finally {
       setIsCreating(false);
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !isCreating && !authLoading) {
+      onCreateAccount();
     }
   };
 
@@ -190,6 +124,7 @@ const Register = () => {
                     placeholder="Enter your Name"
                     value={fullName}
                     onChange={(event) => setFullName(event.target.value)}
+                    onKeyPress={handleKeyPress}
                     className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
                   />
                 </div>
@@ -207,6 +142,7 @@ const Register = () => {
                     placeholder="Enter your Email"
                     value={email}
                     onChange={(event) => setEmail(event.target.value)}
+                    onKeyPress={handleKeyPress}
                     className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
                   />
                 </div>
@@ -224,6 +160,7 @@ const Register = () => {
                     placeholder="Create Password"
                     value={password}
                     onChange={(event) => setPassword(event.target.value)}
+                    onKeyPress={handleKeyPress}
                     className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
                   />
                   <button
@@ -249,6 +186,7 @@ const Register = () => {
                     placeholder="Confirm Password"
                     value={confirmPassword}
                     onChange={(event) => setConfirmPassword(event.target.value)}
+                    onKeyPress={handleKeyPress}
                     className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
                   />
                   <button
@@ -264,11 +202,11 @@ const Register = () => {
 
               <Button
                 type="button"
-                className="h-12 w-full rounded-full border-0 bg-emerald-700 text-lg font-semibold text-white hover:bg-emerald-800"
+                className="h-12 w-full rounded-full border-0 bg-emerald-700 text-lg font-semibold text-white hover:bg-emerald-800 disabled:opacity-50"
                 onClick={onCreateAccount}
-                disabled={isCreating}
+                disabled={isCreating || authLoading}
               >
-                {isCreating ? "Creating account..." : "Create Account"}
+                {isCreating || authLoading ? "Creating account..." : "Create Account"}
               </Button>
 
               <Button
