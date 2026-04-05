@@ -1,7 +1,7 @@
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Request, Response
 from sqlalchemy.orm import Session
 
-from app.db.session import get_core_db
+from app.db.session import get_core_db, get_tracking_db
 from app.models.user import User
 from app.schemas.auth import (
     LoginRequest,
@@ -9,7 +9,9 @@ from app.schemas.auth import (
     RegisterRequest,
     TokenResponse,
     UpdateProfileRequest,
+    UpdateSettingsRequest,
     UserMeResponse,
+    UserSettingsResponse,
 )
 from app.schemas.common import MessageResponse
 from app.services import auth_service
@@ -64,3 +66,35 @@ def update_me(
     db: Session = Depends(get_core_db),
 ):
     return auth_service.update_profile(db, current_user, payload)
+
+
+@router.get("/settings", response_model=UserSettingsResponse)
+def get_settings(
+    current_user: User = Depends(auth_service.get_current_user),
+    db: Session = Depends(get_core_db),
+):
+    return auth_service.get_user_settings(db, current_user)
+
+
+@router.patch("/settings", response_model=UserSettingsResponse)
+def update_settings(
+    payload: UpdateSettingsRequest,
+    current_user: User = Depends(auth_service.get_current_user),
+    db: Session = Depends(get_core_db),
+):
+    return auth_service.update_user_settings(db, current_user, payload)
+
+
+@router.get("/export/pdf")
+def export_user_data_pdf(
+    current_user: User = Depends(auth_service.get_current_user),
+    core_db: Session = Depends(get_core_db),
+    tracking_db: Session = Depends(get_tracking_db),
+):
+    pdf_data = auth_service.export_user_data_pdf(core_db, tracking_db, current_user)
+    filename = f"curasync-user-data-{current_user.id}.pdf"
+    return Response(
+        content=pdf_data,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
