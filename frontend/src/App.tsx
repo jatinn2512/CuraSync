@@ -16,6 +16,7 @@ import Register from "./pages/Register";
 import NotFound from "./pages/NotFound";
 import PageTransition from "./components/PageTransition";
 import ProtectedRoute from "./components/ProtectedRoute";
+import { AuthProvider } from "./lib/authContext";
 
 const AnimatedRoutes = () => {
   const location = useLocation();
@@ -162,7 +163,9 @@ const AnimatedRoutes = () => {
 
 const App = () => (
   <BrowserRouter>
-    <AnimatedRoutes />
+    <AuthProvider>
+      <AnimatedRoutes />
+    </AuthProvider>
   </BrowserRouter>
 );
 
