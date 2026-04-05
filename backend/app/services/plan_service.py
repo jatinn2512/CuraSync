@@ -36,11 +36,13 @@ DEFAULT_PLANS = [
 
 
 def ensure_default_plans(db: Session) -> None:
-    existing_codes = {row[0] for row in db.execute(select(Plan.code)).all()}
+    # Fast check: if any plan exists, all default plans already exist
+    plan_count = db.scalar(select(Plan)) is not None
+    if plan_count:
+        return
 
+    # Only if no plans exist, create them
     for plan_data in DEFAULT_PLANS:
-        if plan_data["code"] in existing_codes:
-            continue
         plan = Plan(
             code=plan_data["code"],
             name=plan_data["name"],
