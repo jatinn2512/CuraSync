@@ -10,6 +10,7 @@ import { useNavigate } from "react-router-dom";
 import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/Button";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/lib/authContext";
 
 const modules = [
   {
@@ -56,15 +57,8 @@ const modules = [
 
 const UserHome = () => {
   const navigate = useNavigate();
-  let displayName = "";
-
-  // This can be set later by the login flow without changing this page.
-  try {
-    displayName = window.localStorage.getItem("health-companion-user-name")?.trim() ?? "";
-  } catch {
-    displayName = "";
-  }
-  const resolvedName = displayName || "User";
+  const { user } = useAuth();
+  const resolvedName = user?.full_name || "User";
 
   return (
     <AppLayout
