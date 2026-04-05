@@ -49,6 +49,15 @@ backend/data/*.sqlite3
 *.sqlite3
 *.tsbuildinfo
 
+# ML generated artifacts
+ai_ml/models/*.pkl
+ai_ml/models/**/*.pkl
+ai_ml/models/**/*.joblib
+
+# Local AI/ML datasets and seeded demo data (do not push)
+ai_ml/datasets/**/*.csv
+ai_ml/datasets/seed/**/*.json
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
