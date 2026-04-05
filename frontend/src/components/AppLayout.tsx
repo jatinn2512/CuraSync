@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Activity, Bell, LogOut, Menu, Search, X } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -7,7 +7,7 @@ import ThemeToggle from "@/components/ThemeToggle";
 import { Button } from "@/components/Button";
 import Footer from "@/components/Footer";
 import { cn } from "@/lib/utils";
-import { clearAuthSession } from "@/lib/auth";
+import { useAuth } from "@/lib/authContext";
 
 interface AppLayoutProps {
   title?: ReactNode;
@@ -17,16 +17,31 @@ interface AppLayoutProps {
   children: ReactNode;
 }
 
+const getInitials = (fullName?: string | null): string => {
+  const normalized = fullName?.trim();
+  if (!normalized) return "U";
+
+  const nameParts = normalized.split(/\s+/);
+  if (nameParts.length === 1) {
+    return nameParts[0].slice(0, 2).toUpperCase();
+  }
+
+  return `${nameParts[0][0] ?? ""}${nameParts[nameParts.length - 1][0] ?? ""}`.toUpperCase();
+};
+
 const AppLayout = ({ title, subtitle, centerHeader = false, hideHeader = false, children }: AppLayoutProps) => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const location = useLocation();
   const navigate = useNavigate();
+  const { logout, user } = useAuth();
   const userMenuRef = useRef<HTMLDivElement | null>(null);
   const isSettingsPage = location.pathname === "/settings";
   const isHealthPage = location.pathname === "/health";
   const isMobileSearchVisible = isHealthPage;
+  const userInitials = useMemo(() => getInitials(user?.full_name), [user?.full_name]);
 
   const searchPlaceholders: Record<string, string> = {
     "/dashboard": "Search dashboard insights...",
@@ -58,9 +73,18 @@ const AppLayout = ({ title, subtitle, centerHeader = false, hideHeader = false, 
     return () => document.removeEventListener("mousedown", handleOutsideClick);
   }, []);
 
-  const handleLogout = () => {
-    clearAuthSession();
-    navigate("/login");
+  const handleLogout = async () => {
+    if (isLoggingOut) return;
+
+    setUserMenuOpen(false);
+    setIsLoggingOut(true);
+
+    try {
+      await logout();
+      navigate("/login", { replace: true });
+    } finally {
+      setIsLoggingOut(false);
+    }
   };
 
   const handleSearch = () => {
@@ -156,8 +180,9 @@ const AppLayout = ({ title, subtitle, centerHeader = false, hideHeader = false, 
                       type="button"
                       className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-primary-foreground"
                       onClick={() => setUserMenuOpen((prev) => !prev)}
+                      title={user?.full_name || "User"}
                     >
-                      JD
+                      {userInitials}
                     </button>
                     <AnimatePresence>
                       {userMenuOpen ? (
@@ -173,9 +198,10 @@ const AppLayout = ({ title, subtitle, centerHeader = false, hideHeader = false, 
                             variant="ghost"
                             className="h-9 w-full justify-start rounded-lg text-sm"
                             onClick={handleLogout}
+                            disabled={isLoggingOut}
                           >
                             <LogOut className="h-4 w-4" />
-                            Log Out
+                            {isLoggingOut ? "Logging out..." : "Log Out"}
                           </Button>
                         </motion.div>
                       ) : null}

@@ -63,7 +63,7 @@ const Navbar = ({ onSectionClick }: NavbarProps) => {
           </Button>
           <Button
             className="h-10 rounded-xl border-0 px-3.5 text-sm gradient-bg-primary text-primary-foreground"
-            onClick={() => navigate("/login")}
+            onClick={() => navigate("/register")}
           >
             Get Started
           </Button>
@@ -118,7 +118,7 @@ const Navbar = ({ onSectionClick }: NavbarProps) => {
                   className="h-10 flex-1 rounded-xl border-0 text-sm gradient-bg-primary text-primary-foreground"
                   onClick={() => {
                     setMobileOpen(false);
-                    navigate("/login");
+                    navigate("/register");
                   }}
                 >
                   Get Started
