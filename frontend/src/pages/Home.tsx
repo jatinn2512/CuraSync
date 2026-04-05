@@ -255,7 +255,7 @@ const Home = () => {
                   <Button
                     size="lg"
                     className="gap-2 border-0 px-8 text-base glow-primary gradient-bg-primary text-primary-foreground"
-                    onClick={() => navigate("/login")}
+                    onClick={() => navigate("/register")}
                   >
                     Get Started <ArrowRight className="h-4 w-4" />
                   </Button>
@@ -548,7 +548,7 @@ const Home = () => {
                   <Button
                     size="lg"
                     className="gap-2 bg-background px-8 text-base text-foreground hover:bg-background/90"
-                    onClick={() => navigate("/login")}
+                    onClick={() => navigate("/register")}
                   >
                     Get Started Free <ArrowRight className="h-4 w-4" />
                   </Button>

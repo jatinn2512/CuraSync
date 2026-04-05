@@ -23,9 +23,9 @@ const Login = () => {
 
   useEffect(() => {
     if (isAuthenticated && !authLoading) {
-      navigate("/dashboard", { replace: true });
+      navigate(redirectTo, { replace: true });
     }
-  }, [isAuthenticated, authLoading, navigate]);
+  }, [isAuthenticated, authLoading, navigate, redirectTo]);
 
   const onLogin = async () => {
     if (isSigningIn || authLoading) return;
@@ -45,7 +45,6 @@ const Login = () => {
 
     try {
       await login(normalizedEmail, password);
-      navigate(redirectTo, { replace: true });
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : "Invalid email or password.";
       setErrorMessage(errorMsg);

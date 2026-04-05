@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -20,6 +20,7 @@ import {
 import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/Button";
 import { getAccessToken, getApiBaseUrl } from "@/lib/auth";
+import { apiClient } from "@/lib/apiClient";
 
 const trendData = [
   { date: "Mon", heartRate: 72, steps: 6200 },
@@ -50,67 +51,206 @@ type ConditionRisk = {
   recommendations: string[];
 };
 
-const conditionRisks: ConditionRisk[] = [
+type ChatMessage = {
+  role: "ai" | "user";
+  text: string;
+};
+
+type ExportScope = "complete" | "weekly" | "this_month";
+
+type RiskOverview = {
+  sleep: { duration_minutes?: number | null; quality_score?: number | null; sleep_date?: string | null } | null;
+  activity: { steps?: number | null; workout_minutes?: number | null } | null;
+  vitals: { heart_rate?: number | null; systolic_bp?: number | null } | null;
+};
+
+type HealthRiskApiResponse = {
+  overall_risk: RiskLevel;
+  conditions: {
+    diabetes: { level: RiskLevel; probability: number; reasons: string[] };
+    heart: { level: RiskLevel; probability: number; reasons: string[] };
+    hypertension: { level: RiskLevel; score: number; reasons: string[] };
+    obesity: { level: RiskLevel; bmi: number };
+    aqi_risk: { level: RiskLevel; aqi: number; advice: string };
+  };
+};
+
+const buildPlaceholderConditionRisks = (): ConditionRisk[] => [
   {
     id: "diabetes",
     name: "Diabetes",
     icon: CheckCircle2,
-    level: "Medium",
-    probability: 0.58,
-    summary: "Borderline sugar trend detected.",
-    reasons: ["Fasting sugar stayed above target on 8 days", "Higher carb-heavy dinner pattern", "Lower weekday activity"],
-    last30Days: ["Average sleep: 6.4h/night", "High-carb meals: 11", "Average steps: 6,980/day"],
-    recommendations: ["Reduce added sugar in evening meals", "Walk 20 mins after dinner", "Track fasting sugar every 3 days"],
+    level: "Low",
+    probability: 0.2,
+    summary: "Not enough user data yet for personalized diabetes risk.",
+    reasons: ["Add glucose, meal, and vitals logs to generate a data-backed estimate."],
+    last30Days: ["No personal diabetes-relevant logs available yet."],
+    recommendations: ["Log meals and vitals for at least a few days to unlock personalized insights."],
   },
   {
     id: "hypertension",
     name: "Hypertension",
     icon: AlertTriangle,
-    level: "High",
-    probability: 0.76,
-    summary: "BP variability needs attention.",
-    reasons: ["Systolic readings above 140 on multiple days", "Sodium-heavy food choices this month", "Stress indicators elevated"],
-    last30Days: ["Average sleep: 5.9h/night", "Salty restaurant meals: 9", "High BP entries: 7"],
-    recommendations: ["Limit packaged salty snacks", "Practice 10-min breathing sessions", "Take BP reading at fixed time daily"],
+    level: "Low",
+    probability: 0.2,
+    summary: "Not enough user data yet for personalized blood pressure risk.",
+    reasons: ["Add BP and activity logs to calculate real hypertension trend."],
+    last30Days: ["No BP/activity trend available for this account yet."],
+    recommendations: ["Start logging BP and daily activity."],
   },
   {
     id: "heart",
     name: "Heart Disease",
     icon: HeartPulse,
-    level: "Medium",
-    probability: 0.51,
-    summary: "Moderate cardio risk markers.",
-    reasons: ["Inconsistent workout streak", "Higher resting pulse on low-sleep days", "Combined BP and activity pattern"],
-    last30Days: ["Cardio sessions: 8", "Average resting pulse: 74 bpm", "Low-activity days: 13"],
-    recommendations: ["Target 150 active mins/week", "Avoid late-night meals", "Maintain sleep schedule consistency"],
+    level: "Low",
+    probability: 0.2,
+    summary: "Not enough user data yet for personalized heart risk.",
+    reasons: ["Add resting pulse, BP, and activity data for a better estimate."],
+    last30Days: ["No personalized heart trend available yet."],
+    recommendations: ["Track resting pulse and workout minutes regularly."],
   },
   {
     id: "obesity",
     name: "Obesity",
     icon: XCircle,
     level: "Low",
-    probability: 0.28,
-    summary: "Weight trend mostly stable.",
-    reasons: ["BMI is near healthy range", "Meal timing is fairly consistent", "Hydration trend is improving"],
-    last30Days: ["Weight fluctuation: +0.4 kg", "Average sleep: 6.8h/night", "Average steps: 8,120/day"],
-    recommendations: ["Maintain protein in breakfast", "Keep evening walk habit", "Continue current hydration pattern"],
+    probability: 0.2,
+    summary: "Not enough body profile data yet for BMI-based risk.",
+    reasons: ["Height/weight profile is needed for reliable obesity risk."],
+    last30Days: ["BMI trend unavailable for this account yet."],
+    recommendations: ["Update height and weight in Profile."],
   },
   {
     id: "aqi",
-    name: "AQI Respiratory",
+    name: "Asthma",
     icon: Wind,
-    level: "High",
-    probability: 0.72,
-    summary: "Air exposure risk currently elevated.",
-    reasons: ["AQI crossed 200 on several days", "Outdoor workouts during peak pollution", "Respiratory sensitivity profile flagged"],
-    last30Days: ["High AQI days: 12", "Outdoor sessions on high AQI: 5", "Average mask compliance: 62%"],
-    recommendations: ["Shift workouts to early indoor slots", "Use N95 on poor AQI days", "Enable AQI alerts before commute"],
+    level: "Low",
+    probability: 0.2,
+    summary: "Not enough environment exposure data yet for asthma-risk signal.",
+    reasons: ["AQI snapshots help estimate respiratory exposure risk."],
+    last30Days: ["No AQI exposure trend available yet."],
+    recommendations: ["Enable AQI tracking and keep location access on."],
   },
 ];
 
-type ChatMessage = {
-  role: "ai" | "user";
-  text: string;
+const normalizeActivity = (value: string | undefined): "low" | "moderate" | "high" => {
+  const normalized = (value ?? "").trim().toLowerCase();
+  if (normalized.includes("low")) return "low";
+  if (normalized.includes("high")) return "high";
+  return "moderate";
+};
+
+const levelToProbability = (level: RiskLevel): number => {
+  if (level === "High") return 0.8;
+  if (level === "Medium") return 0.55;
+  return 0.25;
+};
+
+const buildRiskPayload = (
+  age: number | undefined,
+  gender: string | null | undefined,
+  profile: { height_cm?: number | null; weight_kg?: number | null; activity_level?: string | null } | null | undefined,
+  overview: RiskOverview | null,
+) => {
+  const heightCm = profile?.height_cm ?? null;
+  const weightKg = profile?.weight_kg ?? null;
+  const bmi = heightCm && weightKg ? weightKg / ((heightCm / 100) * (heightCm / 100)) : 24;
+  const systolic = overview?.vitals?.systolic_bp ?? 120;
+  const heartRate = overview?.vitals?.heart_rate ?? 150;
+  const steps = overview?.activity?.steps ?? 0;
+  const stress: "low" | "medium" | "high" = steps < 4000 ? "high" : steps < 8000 ? "medium" : "low";
+  const sex = (gender ?? "").toLowerCase().startsWith("m") ? 1 : 0;
+
+  return {
+    age: age ?? 30,
+    sex,
+    glucose: 110,
+    bmi: Number(bmi.toFixed(2)),
+    bp: systolic,
+    insulin: 80,
+    pregnancies: 0,
+    skin_thickness: 20,
+    dpf: 0.5,
+    chol: 190,
+    fbs: 0,
+    thalach: heartRate,
+    cp: 0,
+    activity: normalizeActivity(profile?.activity_level ?? undefined),
+    stress,
+    aqi: 140,
+  };
+};
+
+const buildConditionRisksFromApi = (risk: HealthRiskApiResponse, overview: RiskOverview | null): ConditionRisk[] => {
+  const sleepSummary = overview?.sleep
+    ? `Latest sleep: ${overview.sleep.duration_minutes ?? "N/A"} min, quality ${overview.sleep.quality_score ?? "N/A"}`
+    : "Sleep logs not available yet.";
+  const activitySummary = overview?.activity
+    ? `Latest activity: ${overview.activity.steps ?? 0} steps, ${overview.activity.workout_minutes ?? 0} workout mins`
+    : "Activity logs not available yet.";
+  const vitalsSummary = overview?.vitals
+    ? `Latest vitals: HR ${overview.vitals.heart_rate ?? "N/A"}, BP ${overview.vitals.systolic_bp ?? "N/A"}`
+    : "Vitals logs not available yet.";
+
+  return [
+    {
+      id: "diabetes",
+      name: "Diabetes",
+      icon: CheckCircle2,
+      level: risk.conditions.diabetes.level,
+      probability: risk.conditions.diabetes.probability,
+      summary: risk.conditions.diabetes.reasons[0] || "Model-based diabetes estimate generated.",
+      reasons: risk.conditions.diabetes.reasons.length ? risk.conditions.diabetes.reasons : ["No major diabetes markers detected."],
+      last30Days: [sleepSummary, activitySummary],
+      recommendations: ["Reduce added sugar intake.", "Keep post-meal walk habit.", "Log fasting sugar regularly."],
+    },
+    {
+      id: "hypertension",
+      name: "Hypertension",
+      icon: AlertTriangle,
+      level: risk.conditions.hypertension.level,
+      probability: Math.min(Math.max(risk.conditions.hypertension.score / 10, 0), 1),
+      summary: risk.conditions.hypertension.reasons[0] || "Rule-based hypertension score generated.",
+      reasons: risk.conditions.hypertension.reasons.length
+        ? risk.conditions.hypertension.reasons
+        : ["No major hypertension markers detected."],
+      last30Days: [vitalsSummary, activitySummary],
+      recommendations: ["Track BP at fixed time daily.", "Lower sodium intake.", "Add stress management routine."],
+    },
+    {
+      id: "heart",
+      name: "Heart Disease",
+      icon: HeartPulse,
+      level: risk.conditions.heart.level,
+      probability: risk.conditions.heart.probability,
+      summary: risk.conditions.heart.reasons[0] || "Model-based heart-risk estimate generated.",
+      reasons: risk.conditions.heart.reasons.length ? risk.conditions.heart.reasons : ["No major heart markers detected."],
+      last30Days: [vitalsSummary, activitySummary],
+      recommendations: ["Maintain regular cardio.", "Keep BP and pulse monitoring active.", "Avoid prolonged inactivity."],
+    },
+    {
+      id: "obesity",
+      name: "Obesity",
+      icon: XCircle,
+      level: risk.conditions.obesity.level,
+      probability: levelToProbability(risk.conditions.obesity.level),
+      summary: `BMI based assessment: ${risk.conditions.obesity.bmi}`,
+      reasons: ["BMI-based risk score was used."],
+      last30Days: [activitySummary, sleepSummary],
+      recommendations: ["Maintain calorie balance.", "Keep protein-focused meals.", "Track body weight weekly."],
+    },
+    {
+      id: "aqi",
+      name: "Asthma",
+      icon: Wind,
+      level: risk.conditions.aqi_risk.level,
+      probability: levelToProbability(risk.conditions.aqi_risk.level),
+      summary: `AQI risk level: ${risk.conditions.aqi_risk.level}`,
+      reasons: [risk.conditions.aqi_risk.advice],
+      last30Days: ["Respiratory exposure risk uses AQI trend + overall risk.", vitalsSummary],
+      recommendations: ["Use mask on poor AQI days.", "Prefer indoor workouts on high AQI.", "Check AQI before commute."],
+    },
+  ];
 };
 
 const levelTextClass = (level: RiskLevel): string => {
@@ -136,6 +276,10 @@ const Health = () => {
   const [isExporting, setIsExporting] = useState(false);
   const [exportError, setExportError] = useState("");
   const [exportSuccess, setExportSuccess] = useState("");
+  const [exportScope, setExportScope] = useState<ExportScope>("complete");
+  const [conditionRisks, setConditionRisks] = useState<ConditionRisk[]>(() => buildPlaceholderConditionRisks());
+  const [riskInfoMessage, setRiskInfoMessage] = useState("Add your health logs to generate personalized risk alerts.");
+  const [isRiskLoading, setIsRiskLoading] = useState(true);
   const [selectedRiskId, setSelectedRiskId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -149,6 +293,54 @@ const Health = () => {
   const maxHeartRate = Math.max(...trendData.map((point) => point.heartRate));
   const maxSteps = Math.max(...trendData.map((point) => point.steps));
 
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadConditionRisks = async () => {
+      setIsRiskLoading(true);
+      setRiskInfoMessage("Loading personalized risk alerts...");
+
+      const [userResponse, overviewResponse] = await Promise.all([
+        apiClient.getCurrentUser(),
+        apiClient.get<RiskOverview>("/risk/overview"),
+      ]);
+
+      if (cancelled) return;
+
+      const user = userResponse.data;
+      const overview = overviewResponse.data ?? null;
+      const hasVitals = Boolean(overview?.vitals && (overview.vitals.systolic_bp ?? overview.vitals.heart_rate));
+      const hasActivity = Boolean(overview?.activity && ((overview.activity.steps ?? 0) > 0 || (overview.activity.workout_minutes ?? 0) > 0));
+      const hasBodyProfile = Boolean(user?.profile?.height_cm && user?.profile?.weight_kg);
+
+      if (!user || (!hasVitals && !hasActivity && !hasBodyProfile)) {
+        setConditionRisks(buildPlaceholderConditionRisks());
+        setRiskInfoMessage("No personal health logs found yet. Add vitals/activity/profile data for personalized risk.");
+        setIsRiskLoading(false);
+        return;
+      }
+
+      const riskPayload = buildRiskPayload(user.age, user.gender, user.profile, overview);
+      const riskResponse = await apiClient.post<HealthRiskApiResponse>("/health/risk", riskPayload);
+      if (cancelled) return;
+
+      if (riskResponse.data) {
+        setConditionRisks(buildConditionRisksFromApi(riskResponse.data, overview));
+        setRiskInfoMessage("Personalized risk generated from your current profile and latest logs.");
+      } else {
+        setConditionRisks(buildPlaceholderConditionRisks());
+        setRiskInfoMessage("Risk engine could not read your data right now. Showing starter guidance.");
+      }
+      setIsRiskLoading(false);
+    };
+
+    void loadConditionRisks();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const handleExportPdf = async () => {
     setExportError("");
     setExportSuccess("");
@@ -160,7 +352,7 @@ const Health = () => {
         throw new Error("Session expired. Please login again.");
       }
 
-      const response = await fetch(`${getApiBaseUrl()}/auth/export/pdf`, {
+      const response = await fetch(`${getApiBaseUrl()}/auth/export/pdf?scope=${encodeURIComponent(exportScope)}`, {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -198,7 +390,8 @@ const Health = () => {
       downloadLink.remove();
       window.URL.revokeObjectURL(objectUrl);
 
-      setExportSuccess("User data exported successfully as PDF.");
+      const scopeLabel = exportScope === "weekly" ? "weekly" : exportScope === "this_month" ? "this month" : "complete";
+      setExportSuccess(`User ${scopeLabel} health data exported successfully as PDF.`);
       setTimeout(() => setExportSuccess(""), 3000);
     } catch (error: unknown) {
       if (error instanceof Error) {
@@ -228,22 +421,22 @@ const Health = () => {
 
   return (
     <AppLayout title="Health" subtitle="Monitor vitals, track symptoms, and get AI-backed recommendations.">
-      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="grid grid-cols-2 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
         {metrics.map((metric, index) => (
           <motion.article
             key={metric.label}
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.05 }}
-            className="glass-card rounded-3xl border-border/50 p-5"
+            className="glass-card rounded-2xl border-border/50 p-3 sm:rounded-3xl sm:p-5"
           >
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-card">
-                <metric.icon className={`h-5 w-5 ${metric.color}`} />
+            <div className="flex items-center gap-2.5 sm:gap-3">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-card sm:h-10 sm:w-10 sm:rounded-xl">
+                <metric.icon className={`h-4 w-4 sm:h-5 sm:w-5 ${metric.color}`} />
               </div>
               <div>
-                <p className="text-lg font-bold">{metric.value}</p>
-                <p className="text-xs text-muted-foreground">{metric.label}</p>
+                <p className="text-base font-bold sm:text-lg">{metric.value}</p>
+                <p className="text-[11px] leading-tight text-muted-foreground sm:text-xs">{metric.label}</p>
               </div>
             </div>
           </motion.article>
@@ -254,17 +447,28 @@ const Health = () => {
         <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
           <div>
             <h2 className="text-xl font-semibold">Export Your Data</h2>
-            <p className="text-sm text-muted-foreground">Download all available user data in PDF format.</p>
+            <p className="text-sm text-muted-foreground">Download complete, weekly, or this month health data in PDF format.</p>
           </div>
-          <Button
-            type="button"
-            className="h-10 rounded-xl bg-primary px-4 text-primary-foreground"
-            onClick={handleExportPdf}
-            disabled={isExporting}
-          >
-            <Download className="h-4 w-4" />
-            {isExporting ? "Exporting..." : "Export All Data (PDF)"}
-          </Button>
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+            <select
+              value={exportScope}
+              onChange={(event) => setExportScope(event.target.value as ExportScope)}
+              className="h-10 rounded-xl border border-border/60 bg-card px-3 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/25"
+            >
+              <option value="complete">Complete Health Data</option>
+              <option value="weekly">Weekly Health Data</option>
+              <option value="this_month">This Month Health Data</option>
+            </select>
+            <Button
+              type="button"
+              className="h-10 rounded-xl bg-primary px-4 text-primary-foreground"
+              onClick={handleExportPdf}
+              disabled={isExporting}
+            >
+              <Download className="h-4 w-4" />
+              {isExporting ? "Exporting..." : "Export PDF"}
+            </Button>
+          </div>
         </div>
         {exportError && (
           <div className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-500">{exportError}</div>
@@ -280,6 +484,7 @@ const Health = () => {
             <AlertTriangle className="h-5 w-5 text-primary" />
             Disease Risk Alerts
           </h2>
+          <p className="mb-3 text-xs text-muted-foreground">{isRiskLoading ? "Preparing personalized risk..." : riskInfoMessage}</p>
           <div className="space-y-3">
             {conditionRisks.map((risk) => (
               <button

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Activity, Eye, EyeOff, Lock, Mail, UserRound, X } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/Button";
@@ -7,7 +7,7 @@ import { useAuth } from "@/lib/authContext";
 
 const Register = () => {
   const navigate = useNavigate();
-  const { register, isLoading: authLoading } = useAuth();
+  const { register, isAuthenticated, isLoading: authLoading } = useAuth();
   
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -17,6 +17,12 @@ const Register = () => {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+
+  useEffect(() => {
+    if (isAuthenticated && !authLoading) {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [isAuthenticated, authLoading, navigate]);
 
   const onCreateAccount = async () => {
     if (isCreating || authLoading) return;
@@ -50,7 +56,6 @@ const Register = () => {
         email: normalizedEmail,
         password,
       });
-      navigate("/dashboard", { replace: true });
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : "Registration failed. Please try again.";
       setErrorMessage(errorMsg);

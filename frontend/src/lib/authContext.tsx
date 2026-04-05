@@ -128,8 +128,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
         saveAuthSession(response.data.access_token, response.data.refresh_token);
 
-        // Fetch user data
-        await fetchCurrentUser();
+        // Do not block login UX on /auth/me. Fetch profile in background.
+        void fetchCurrentUser();
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Login failed';
         setError(errorMessage);
