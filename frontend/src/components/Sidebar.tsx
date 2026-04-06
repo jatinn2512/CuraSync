@@ -1,4 +1,4 @@
-import { Activity, AirVent, ChevronRight, HeartPulse, LayoutDashboard, Leaf, Settings, User, Users } from "lucide-react";
+import { Activity, AirVent, BarChart3, ChevronRight, HeartPulse, LayoutDashboard, Leaf, Settings, User, Users } from "lucide-react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { Button } from "@/components/Button";
 import { cn } from "@/lib/utils";
@@ -8,6 +8,7 @@ const links = [
   { label: "Health", to: "/health", icon: HeartPulse },
   { label: "Food", to: "/food", icon: Leaf },
   { label: "AQI", to: "/aqi", icon: AirVent },
+  { label: "Analysis", to: "/analysis", icon: BarChart3 },
   { label: "Community", to: "/community", icon: Users },
   { label: "Profile", to: "/profile", icon: User },
   { label: "Settings", to: "/settings", icon: Settings },
