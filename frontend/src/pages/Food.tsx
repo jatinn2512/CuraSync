@@ -2,17 +2,14 @@ import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { createPortal } from "react-dom";
 import {
+  AlertTriangle,
   Beef,
-  Clock3,
-  Droplets,
+  CheckCircle2,
   Flame,
-  LocateFixed,
-  MapPin,
+  History,
   Plus,
   Search,
   ShieldAlert,
-  Sparkles,
-  Star,
   Store,
   UtensilsCrossed,
   Wheat,
@@ -20,269 +17,387 @@ import {
 } from "lucide-react";
 import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/Button";
+import { apiClient } from "@/lib/apiClient";
 
 const macros = [
   { label: "Calories", value: 1845, target: 2200, unit: "kcal", icon: Flame, color: "text-health-rose", bg: "bg-health-rose/12" },
   { label: "Protein", value: 78, target: 120, unit: "g", icon: Beef, color: "text-health-teal", bg: "bg-health-teal/12" },
   { label: "Carbs", value: 220, target: 280, unit: "g", icon: Wheat, color: "text-health-cyan", bg: "bg-health-cyan/12" },
-  { label: "Fats", value: 55, target: 70, unit: "g", icon: Droplets, color: "text-health-violet", bg: "bg-health-violet/12" },
 ] as const;
 
 type Meal = {
   type: "Breakfast" | "Lunch" | "Dinner" | "Snack";
   items: string;
   calories: number;
-  time: string;
+  loggedAt: string;
 };
 
-type Dish = {
+type AlertLevel = "green" | "yellow" | "red";
+
+type DishCatalog = {
   id: string;
   name: string;
   calories: number;
-  protein: number;
-  carbs: number;
-  fat: number;
-  sodium: number;
-  healthScore: number;
-  price: number;
-  imageIcon: string;
-  tags: string[];
+  protein_g: number;
+  carbs_g: number;
+  fat_g: number;
+  sugar_g: number;
+  sodium_mg: number;
+  fiber_g: number;
+  vitamins: string[];
+  alert: AlertLevel;
+  alert_message: string;
+  choose_button_label: string;
+  choose_feedback: string;
 };
 
-type Restaurant = {
+type RestaurantCatalog = {
   id: string;
   name: string;
   cuisine: string;
-  location: string;
-  lat: number;
-  lon: number;
-  rating: number;
-  deliveryEta: string;
-  heroIcon: string;
-  menu: Dish[];
+  dish_count: number;
+  dishes: DishCatalog[];
 };
 
-const initialMeals: Meal[] = [
-  { type: "Breakfast", items: "Oatmeal, banana, green tea", calories: 380, time: "8:00 AM" },
-  { type: "Lunch", items: "Grilled chicken salad, brown rice", calories: 620, time: "12:30 PM" },
-  { type: "Snack", items: "Greek yogurt, almonds", calories: 245, time: "3:30 PM" },
-  { type: "Dinner", items: "Salmon, steamed vegetables", calories: 600, time: "7:00 PM" },
-];
-
-const restaurantData: Restaurant[] = [
-  {
-    id: "green-bowl",
-    name: "Green Bowl Kitchen",
-    cuisine: "Healthy Bowls",
-    location: "Connaught Place, Delhi",
-    lat: 28.6315,
-    lon: 77.2167,
-    rating: 4.6,
-    deliveryEta: "20-30 min",
-    heroIcon: "🥗",
-    menu: [
-      { id: "gb1", name: "Quinoa Protein Bowl", calories: 420, protein: 26, carbs: 44, fat: 14, sodium: 520, healthScore: 91, price: 349, imageIcon: "🥙", tags: ["recommended", "high protein"] },
-      { id: "gb2", name: "Paneer Tikka Wrap", calories: 510, protein: 21, carbs: 49, fat: 22, sodium: 760, healthScore: 68, price: 289, imageIcon: "🌯", tags: ["balanced"] },
-      { id: "gb3", name: "Cheesy Nacho Bowl", calories: 790, protein: 16, carbs: 78, fat: 36, sodium: 1420, healthScore: 36, price: 369, imageIcon: "🧀", tags: ["unhealthy"] },
-      { id: "gb4", name: "Berry Smoothie", calories: 260, protein: 7, carbs: 36, fat: 8, sodium: 120, healthScore: 84, price: 199, imageIcon: "🥤", tags: ["light"] },
-    ],
-  },
-  {
-    id: "fit-bite",
-    name: "FitBite Cafe",
-    cuisine: "Fitness Meals",
-    location: "Sector 18, Noida",
-    lat: 28.5706,
-    lon: 77.3272,
-    rating: 4.4,
-    deliveryEta: "25-35 min",
-    heroIcon: "💪",
-    menu: [
-      { id: "fb1", name: "Grilled Chicken Meal Box", calories: 460, protein: 36, carbs: 34, fat: 18, sodium: 590, healthScore: 88, price: 399, imageIcon: "🍗", tags: ["recommended", "lean"] },
-      { id: "fb2", name: "Greek Yogurt Fruit Bowl", calories: 280, protein: 14, carbs: 32, fat: 8, sodium: 180, healthScore: 94, price: 249, imageIcon: "🍓", tags: ["recommended"] },
-      { id: "fb3", name: "Loaded Fries Platter", calories: 840, protein: 11, carbs: 90, fat: 42, sodium: 1520, healthScore: 29, price: 299, imageIcon: "🍟", tags: ["unhealthy"] },
-      { id: "fb4", name: "Power Moong Chaat", calories: 310, protein: 18, carbs: 34, fat: 9, sodium: 290, healthScore: 86, price: 179, imageIcon: "🥣", tags: ["fiber rich"] },
-    ],
-  },
-  {
-    id: "urban-spice",
-    name: "Urban Spice House",
-    cuisine: "North Indian",
-    location: "Cyber Hub, Gurugram",
-    lat: 28.495,
-    lon: 77.0895,
-    rating: 4.3,
-    deliveryEta: "30-40 min",
-    heroIcon: "🍛",
-    menu: [
-      { id: "us1", name: "Dal Tadka + 2 Roti", calories: 430, protein: 17, carbs: 52, fat: 16, sodium: 640, healthScore: 78, price: 259, imageIcon: "🍲", tags: ["balanced"] },
-      { id: "us2", name: "Tandoori Soya Chaap", calories: 360, protein: 24, carbs: 18, fat: 20, sodium: 700, healthScore: 74, price: 279, imageIcon: "🍢", tags: ["high protein"] },
-      { id: "us3", name: "Butter Chicken + Naan", calories: 890, protein: 35, carbs: 62, fat: 55, sodium: 1710, healthScore: 33, price: 449, imageIcon: "🍗", tags: ["unhealthy"] },
-      { id: "us4", name: "Cucumber Mint Raita", calories: 140, protein: 6, carbs: 12, fat: 6, sodium: 250, healthScore: 82, price: 129, imageIcon: "🥛", tags: ["light"] },
-    ],
-  },
-  {
-    id: "satvik-thali",
-    name: "Satvik Thali Point",
-    cuisine: "Vegetarian",
-    location: "Rajouri Garden, Delhi",
-    lat: 28.6425,
-    lon: 77.1185,
-    rating: 4.5,
-    deliveryEta: "22-32 min",
-    heroIcon: "🌿",
-    menu: [
-      { id: "st1", name: "Millet Thali", calories: 510, protein: 19, carbs: 66, fat: 18, sodium: 560, healthScore: 85, price: 319, imageIcon: "🍽️", tags: ["recommended"] },
-      { id: "st2", name: "Veg Pulao + Raita", calories: 470, protein: 11, carbs: 68, fat: 14, sodium: 680, healthScore: 72, price: 269, imageIcon: "🍚", tags: ["balanced"] },
-      { id: "st3", name: "Malai Kofta Combo", calories: 760, protein: 14, carbs: 54, fat: 46, sodium: 1380, healthScore: 38, price: 379, imageIcon: "🍛", tags: ["unhealthy"] },
-      { id: "st4", name: "Sprout Salad", calories: 190, protein: 12, carbs: 20, fat: 5, sodium: 140, healthScore: 93, price: 159, imageIcon: "🥬", tags: ["recommended"] },
-    ],
-  },
-];
-
-const toRadians = (value: number) => (value * Math.PI) / 180;
-
-const getDistanceKm = (lat1: number, lon1: number, lat2: number, lon2: number) => {
-  const earthRadius = 6371;
-  const dLat = toRadians(lat2 - lat1);
-  const dLon = toRadians(lon2 - lon1);
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return earthRadius * c;
+type RestaurantCatalogResponse = {
+  restaurants: RestaurantCatalog[];
+  total: number;
 };
 
-const getDishImpact = (dish: Dish) => {
-  if (dish.healthScore >= 80) {
-    return {
-      label: "Low impact",
-      tone: "text-health-teal",
-      surface: "bg-health-teal/12",
-      note: "Great for steady energy and recovery.",
-      loads: [
-        { key: "Calories", value: Math.min(Math.round((dish.calories / 2200) * 100), 100) },
-        { key: "Sodium", value: Math.min(Math.round((dish.sodium / 2000) * 100), 100) },
-        { key: "Crash risk", value: 24 },
-      ],
-    };
-  }
+type DishSuggestion = {
+  restaurant_id: string;
+  dish_id: string;
+  dish_name: string;
+  alert: AlertLevel;
+};
 
-  if (dish.healthScore >= 60) {
-    return {
-      label: "Moderate impact",
-      tone: "text-yellow-500",
-      surface: "bg-yellow-500/12",
-      note: "Fits your day better with portion control.",
-      loads: [
-        { key: "Calories", value: Math.min(Math.round((dish.calories / 1800) * 100), 100) },
-        { key: "Sodium", value: Math.min(Math.round((dish.sodium / 1600) * 100), 100) },
-        { key: "Crash risk", value: 48 },
-      ],
-    };
-  }
+type ChooseDishResponse = {
+  restaurant_id: string;
+  restaurant_name: string;
+  dish_id: string;
+  dish_name: string;
+  alert: AlertLevel;
+  message: string;
+  interaction_id: number;
+  meal_log_id: number;
+};
 
-  return {
-    label: "High impact",
-    tone: "text-health-rose",
-    surface: "bg-health-rose/12",
-    note: "May impact hydration, sleep quality, and calorie balance.",
-    loads: [
-      { key: "Calories", value: Math.min(Math.round((dish.calories / 1300) * 100), 100) },
-      { key: "Sodium", value: Math.min(Math.round((dish.sodium / 1200) * 100), 100) },
-      { key: "Crash risk", value: 78 },
-    ],
-  };
+type RestaurantInteractionHistory = {
+  id: number;
+  restaurant_name: string;
+  action: string;
+  query_text: string | null;
+  dish_name: string | null;
+  impact_label: string | null;
+  created_at: string;
+};
+
+type FoodOverviewSummary = {
+  latest_item?: string | null;
+  latest_logged_at?: string | null;
+  latest_calories?: number | null;
+  latest_sodium_mg?: number | null;
+  latest_note?: string | null;
+  latest_alert?: string | null;
+  alert_counts?: { green?: number; yellow?: number; red?: number } | null;
+  recent_choices?: number | null;
+};
+
+type RiskOverviewResponse = {
+  food?: FoodOverviewSummary | null;
+};
+
+const initialMeals: Meal[] = [];
+
+const alertMeta: Record<
+  AlertLevel,
+  {
+    label: string;
+    badgeClass: string;
+    panelClass: string;
+    icon: typeof CheckCircle2;
+    chooseButtonClass: string;
+    confirmButtonClass: string;
+  }
+> = {
+  green: {
+    label: "Green",
+    badgeClass: "bg-emerald-500/12 text-emerald-600",
+    panelClass: "border-emerald-500/40 bg-emerald-500/10 text-emerald-800",
+    icon: CheckCircle2,
+    chooseButtonClass: "border-emerald-500/30 bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/25",
+    confirmButtonClass: "bg-emerald-600 text-white hover:bg-emerald-700",
+  },
+  yellow: {
+    label: "Yellow",
+    badgeClass: "bg-yellow-500/12 text-yellow-700",
+    panelClass: "border-yellow-500/40 bg-yellow-500/10 text-yellow-800",
+    icon: AlertTriangle,
+    chooseButtonClass: "border-yellow-500/35 bg-yellow-500/15 text-yellow-800 hover:bg-yellow-500/25",
+    confirmButtonClass: "bg-yellow-600 text-white hover:bg-yellow-700",
+  },
+  red: {
+    label: "Red",
+    badgeClass: "bg-health-rose/12 text-health-rose",
+    panelClass: "border-health-rose/40 bg-health-rose/10 text-health-rose",
+    icon: ShieldAlert,
+    chooseButtonClass: "border-health-rose/35 bg-health-rose/15 text-health-rose hover:bg-health-rose/25",
+    confirmButtonClass: "bg-health-rose text-white hover:bg-health-rose/90",
+  },
+};
+
+const toAlertLevel = (value: string | null | undefined): AlertLevel => {
+  const key = (value ?? "").trim().toLowerCase();
+  if (key === "green" || key === "yellow" || key === "red") {
+    return key;
+  }
+  return "yellow";
+};
+
+const getMealOptionsByHour = (hour: number): Meal["type"][] => {
+  if (hour >= 5 && hour < 11) return ["Breakfast", "Snack"];
+  if (hour >= 11 && hour < 16) return ["Lunch", "Snack"];
+  if (hour >= 16 && hour < 22) return ["Dinner", "Snack"];
+  return ["Snack"];
+};
+
+const getDefaultMealType = (hour: number): Meal["type"] => getMealOptionsByHour(hour)[0] ?? "Snack";
+const allMealTypes: Meal["type"][] = ["Breakfast", "Lunch", "Dinner", "Snack"];
+
+const vegKeywords = [
+  "paneer",
+  "dal",
+  "naan",
+  "roti",
+  "salad",
+  "veggie",
+  "veg ",
+  "mushroom",
+  "tofu",
+  "rajma",
+  "chole",
+  "aloo",
+  "fruit",
+  "corn",
+  "fries",
+  "pizza",
+  "pasta",
+  "soup",
+  "shake",
+  "lassi",
+  "brownie",
+  "ice cream",
+];
+
+const nonVegKeywords = [
+  "chicken",
+  "mutton",
+  "fish",
+  "egg",
+  "shrimp",
+  "prawn",
+  "meat",
+  "beef",
+  "biryani",
+  "kebab",
+  "tikka",
+  "sausage",
+];
+
+const isVegDish = (dishName: string): boolean => {
+  const name = dishName.toLowerCase();
+  if (nonVegKeywords.some((keyword) => name.includes(keyword))) {
+    return false;
+  }
+  return vegKeywords.some((keyword) => name.includes(keyword)) || !nonVegKeywords.some((keyword) => name.includes(keyword));
 };
 
 const Food = () => {
   const [activeTab, setActiveTab] = useState<"meal" | "restaurant">("meal");
+  const [now, setNow] = useState<Date>(() => new Date());
+
   const [meals, setMeals] = useState<Meal[]>(initialMeals);
   const [showAdd, setShowAdd] = useState(false);
   const [newMeal, setNewMeal] = useState<{ type: Meal["type"]; items: string; calories: string }>({
-    type: "Breakfast",
+    type: getDefaultMealType(new Date().getHours()),
     items: "",
     calories: "",
   });
 
   const [query, setQuery] = useState("");
-  const [location, setLocation] = useState<{ lat: number; lon: number } | null>(null);
-  const [locationText, setLocationText] = useState("Using nearby defaults");
-  const [locating, setLocating] = useState(false);
+  const [dietPreference, setDietPreference] = useState<"all" | "veg" | "non_veg">("all");
+  const [restaurantLoading, setRestaurantLoading] = useState(false);
+  const [restaurantError, setRestaurantError] = useState<string | null>(null);
+  const [restaurants, setRestaurants] = useState<RestaurantCatalog[]>([]);
+
   const [selectedRestaurantId, setSelectedRestaurantId] = useState<string | null>(null);
   const [selectedDishId, setSelectedDishId] = useState<string | null>(null);
+
+  const [menuQuery, setMenuQuery] = useState("");
+  const [suggestions, setSuggestions] = useState<DishSuggestion[]>([]);
+  const [suggestionLoading, setSuggestionLoading] = useState(false);
+
+  const [pendingChoice, setPendingChoice] = useState<{ dishId: string; dishName: string; alert: AlertLevel; message: string } | null>(null);
+  const [confirmingChoice, setConfirmingChoice] = useState(false);
+  const [chooseResult, setChooseResult] = useState<{ alert: AlertLevel; message: string; dishId: string } | null>(null);
+
+  const [showHistory, setShowHistory] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState<string | null>(null);
+  const [historyItems, setHistoryItems] = useState<RestaurantInteractionHistory[]>([]);
+  const [historyFoodSummary, setHistoryFoodSummary] = useState<FoodOverviewSummary | null>(null);
 
   const addMeal = () => {
     if (!newMeal.items.trim()) return;
 
+    const loggedAt = new Date().toISOString();
     setMeals((prev) => [
       {
         type: newMeal.type,
         items: newMeal.items.trim(),
         calories: Number.parseInt(newMeal.calories, 10) || 0,
-        time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        loggedAt,
       },
       ...prev,
     ]);
-    setNewMeal({ type: "Breakfast", items: "", calories: "" });
+
+    setNewMeal({ type: getDefaultMealType(new Date().getHours()), items: "", calories: "" });
     setShowAdd(false);
   };
 
-  const restaurantCards = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase();
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setNow(new Date());
+    }, 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
-    const enriched = restaurantData.map((restaurant) => {
-      const distance = location
-        ? getDistanceKm(location.lat, location.lon, restaurant.lat, restaurant.lon)
-        : Math.max(1.1, Math.abs(restaurant.rating * 3.4 - 12));
-      return { ...restaurant, distance };
-    });
+  const todaysMeals = useMemo(() => {
+    const todayKey = now.toDateString();
+    return meals.filter((meal) => new Date(meal.loggedAt).toDateString() === todayKey);
+  }, [meals, now]);
 
-    const filtered = enriched.filter((restaurant) => {
-      if (!normalizedQuery) return true;
-      const menuText = restaurant.menu.map((dish) => dish.name.toLowerCase()).join(" ");
-      return (
-        restaurant.name.toLowerCase().includes(normalizedQuery) ||
-        restaurant.cuisine.toLowerCase().includes(normalizedQuery) ||
-        restaurant.location.toLowerCase().includes(normalizedQuery) ||
-        menuText.includes(normalizedQuery)
-      );
-    });
+  const loadHistory = async () => {
+    setHistoryLoading(true);
+    setHistoryError(null);
+    const [historyResponse, overviewResponse] = await Promise.all([
+      apiClient.get<RestaurantInteractionHistory[]>("/restaurant/interactions?limit=120"),
+      apiClient.get<RiskOverviewResponse>("/risk/overview"),
+    ]);
 
-    return filtered.sort((a, b) => a.distance - b.distance || b.rating - a.rating);
-  }, [location, query]);
+    setHistoryFoodSummary(overviewResponse.data?.food ?? null);
 
-  const selectedRestaurant = selectedRestaurantId
-    ? restaurantData.find((restaurant) => restaurant.id === selectedRestaurantId) ?? null
-    : null;
+    if (historyResponse.data) {
+      const choicesOnly = historyResponse.data.filter((item) => item.action === "choose_dish" && item.dish_name);
+      setHistoryItems(choicesOnly);
+    } else {
+      setHistoryItems([]);
+      setHistoryError(historyResponse.error ?? "Unable to load history right now.");
+    }
+    setHistoryLoading(false);
+  };
 
-  const selectedDish = selectedRestaurant?.menu.find((dish) => dish.id === selectedDishId) ?? null;
+  const openHistory = () => {
+    setShowHistory(true);
+    void loadHistory();
+  };
 
-  const recommendedDishes = useMemo(() => {
-    if (!selectedRestaurant) return [];
-    return [...selectedRestaurant.menu].sort((a, b) => b.healthScore - a.healthScore).slice(0, 2);
-  }, [selectedRestaurant]);
+  useEffect(() => {
+    if (activeTab !== "restaurant") return;
 
-  const handleLocate = () => {
-    if (!("geolocation" in navigator)) {
-      setLocationText("Location not available on this device");
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
+      setRestaurantLoading(true);
+      setRestaurantError(null);
+
+      const params = new URLSearchParams();
+      if (query.trim()) {
+        params.set("q", query.trim());
+      }
+      const endpoint = params.size ? `/restaurant/catalog?${params.toString()}` : "/restaurant/catalog";
+
+      const response = await apiClient.get<RestaurantCatalogResponse>(endpoint);
+      if (cancelled) return;
+
+      if (response.error || !response.data) {
+        setRestaurants([]);
+        setRestaurantError(response.error ?? "Unable to load restaurants right now.");
+        setSelectedRestaurantId(null);
+        setSelectedDishId(null);
+        setRestaurantLoading(false);
+        return;
+      }
+
+      setRestaurants(response.data.restaurants);
+      setSelectedRestaurantId((current) => {
+        if (current && response.data?.restaurants.some((restaurant) => restaurant.id === current)) {
+          return current;
+        }
+        return null;
+      });
+      setRestaurantLoading(false);
+    }, 220);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [activeTab, query]);
+
+  const selectedRestaurant = useMemo(
+    () => restaurants.find((restaurant) => restaurant.id === selectedRestaurantId) ?? null,
+    [restaurants, selectedRestaurantId],
+  );
+
+  useEffect(() => {
+    if (!selectedRestaurant) {
+      setSelectedDishId(null);
+      setPendingChoice(null);
       return;
     }
 
-    setLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setLocation({ lat: position.coords.latitude, lon: position.coords.longitude });
-        setLocationText(`Near ${position.coords.latitude.toFixed(2)}, ${position.coords.longitude.toFixed(2)}`);
-        setLocating(false);
-      },
-      () => {
-        setLocationText("Location denied - showing nearby defaults");
-        setLocating(false);
-      },
-      { enableHighAccuracy: true, timeout: 10000 },
-    );
-  };
+    const allowedDishIds =
+      dietPreference === "veg"
+        ? new Set(selectedRestaurant.dishes.filter((dish) => isVegDish(dish.name)).map((dish) => dish.id))
+        : null;
+
+    setSelectedDishId((current) => {
+      if (
+        current &&
+        selectedRestaurant.dishes.some((dish) => dish.id === current) &&
+        (!allowedDishIds || allowedDishIds.has(current))
+      ) {
+        return current;
+      }
+      return null;
+    });
+  }, [dietPreference, selectedRestaurant]);
+
+  useEffect(() => {
+    if (!selectedRestaurant || !menuQuery.trim()) {
+      setSuggestions([]);
+      return;
+    }
+
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
+      setSuggestionLoading(true);
+      const params = new URLSearchParams({
+        restaurant_id: selectedRestaurant.id,
+        q: menuQuery.trim(),
+        limit: "8",
+      });
+      const response = await apiClient.get<DishSuggestion[]>(`/restaurant/suggestions?${params.toString()}`);
+      if (cancelled) return;
+      setSuggestions(response.data ?? []);
+      setSuggestionLoading(false);
+    }, 180);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [menuQuery, selectedRestaurant]);
 
   useEffect(() => {
     if (!selectedRestaurant) return;
@@ -293,50 +408,173 @@ const Food = () => {
     };
   }, [selectedRestaurant]);
 
+  const selectedDish = selectedRestaurant?.dishes.find((dish) => dish.id === selectedDishId) ?? null;
+
+  const restaurantCards = useMemo(() => {
+    if (dietPreference !== "veg") {
+      return restaurants;
+    }
+    return restaurants.filter((restaurant) => restaurant.dishes.some((dish) => isVegDish(dish.name)));
+  }, [dietPreference, restaurants]);
+
+  const dishPoolForSuggestions = useMemo(() => {
+    const source = selectedRestaurant ? selectedRestaurant.dishes : restaurantCards.flatMap((restaurant) => restaurant.dishes);
+    if (dietPreference !== "veg") {
+      return source;
+    }
+    return source.filter((dish) => isVegDish(dish.name));
+  }, [dietPreference, restaurantCards, selectedRestaurant]);
+
+  const filteredDishes = useMemo(() => {
+    if (!selectedRestaurant) return [];
+
+    let source = selectedRestaurant.dishes;
+    if (dietPreference === "veg") {
+      source = source.filter((dish) => isVegDish(dish.name));
+    }
+
+    const q = menuQuery.trim().toLowerCase();
+    if (!q) return source;
+
+    return source.filter((dish) => dish.name.toLowerCase().includes(q));
+  }, [dietPreference, menuQuery, selectedRestaurant]);
+
+  const visibleSuggestions = useMemo(() => {
+    const fromApi = suggestions;
+    if (dietPreference !== "veg" || !selectedRestaurant) {
+      return fromApi;
+    }
+    const allowedDishIds = new Set(
+      selectedRestaurant.dishes.filter((dish) => isVegDish(dish.name)).map((dish) => dish.id),
+    );
+    return fromApi.filter((suggestion) => allowedDishIds.has(suggestion.dish_id));
+  }, [dietPreference, selectedRestaurant, suggestions]);
+
+  const recommendedDishes = useMemo(() => {
+    if (!selectedRestaurant) return [];
+
+    const rank: Record<AlertLevel, number> = { green: 0, yellow: 1, red: 2 };
+
+    const source =
+      dietPreference === "veg"
+        ? selectedRestaurant.dishes.filter((dish) => isVegDish(dish.name))
+        : selectedRestaurant.dishes;
+
+    return [...source]
+      .sort((left, right) => rank[left.alert] - rank[right.alert] || left.calories - right.calories)
+      .slice(0, 3);
+  }, [dietPreference, selectedRestaurant]);
+
+  const quickSuggestions = useMemo(() => {
+    const hour = now.getHours();
+    const queryKey = hour >= 16 ? "dinner" : hour >= 11 ? "lunch" : "breakfast";
+    const filtered = dishPoolForSuggestions
+      .filter((dish) => dish.name.toLowerCase().includes(queryKey) || dish.alert === "green")
+      .slice(0, 4);
+
+    return filtered.map((dish) => dish.name);
+  }, [dishPoolForSuggestions, now]);
+
+  useEffect(() => {
+    if (!selectedRestaurantId) return;
+    if (restaurantCards.some((restaurant) => restaurant.id === selectedRestaurantId)) return;
+    setSelectedRestaurantId(null);
+    setSelectedDishId(null);
+    setPendingChoice(null);
+  }, [restaurantCards, selectedRestaurantId]);
+
+  const closeRestaurantModal = () => {
+    setSelectedRestaurantId(null);
+    setSelectedDishId(null);
+    setMenuQuery("");
+    setSuggestions([]);
+    setPendingChoice(null);
+    setChooseResult(null);
+  };
+
+  const stageDishChoice = (dish: DishCatalog) => {
+    setSelectedDishId(dish.id);
+    setPendingChoice({
+      dishId: dish.id,
+      dishName: dish.name,
+      alert: dish.alert,
+      message: dish.choose_feedback,
+    });
+    setChooseResult(null);
+  };
+
+  const cancelDishChoice = () => {
+    setPendingChoice(null);
+    setChooseResult(null);
+  };
+
+  const toggleDishChoice = (dish: DishCatalog) => {
+    if (pendingChoice?.dishId === dish.id) {
+      cancelDishChoice();
+      return;
+    }
+    stageDishChoice(dish);
+  };
+
+  const confirmDishChoice = async () => {
+    if (!selectedRestaurant || !pendingChoice) return;
+
+    setConfirmingChoice(true);
+    setRestaurantError(null);
+
+    const response = await apiClient.post<ChooseDishResponse>("/restaurant/choose", {
+      restaurant_id: selectedRestaurant.id,
+      dish_id: pendingChoice.dishId,
+    });
+
+    if (response.data) {
+      setChooseResult({ alert: response.data.alert, message: response.data.message, dishId: response.data.dish_id });
+      setSelectedDishId(response.data.dish_id);
+      setPendingChoice(null);
+      if (showHistory) {
+        void loadHistory();
+      }
+    } else {
+      setChooseResult({ alert: pendingChoice.alert, message: pendingChoice.message, dishId: pendingChoice.dishId });
+      if (response.error) {
+        setRestaurantError(response.error);
+      }
+    }
+
+    setConfirmingChoice(false);
+  };
+
   return (
-    <AppLayout title="Food" subtitle="Track nutrition and discover smarter choices near you.">
+    <AppLayout title="Food" subtitle="Track nutrition and choose better restaurant dishes with health-aware guidance.">
       <section className="flex flex-wrap items-center justify-between gap-3">
         <div className="inline-flex rounded-2xl border border-border/60 bg-card/55 p-1">
-          <Button
-            type="button"
-            variant={activeTab === "meal" ? "default" : "ghost"}
-            className="h-10 rounded-xl px-5"
-            onClick={() => setActiveTab("meal")}
-          >
+          <Button type="button" variant={activeTab === "meal" ? "default" : "ghost"} className="h-10 rounded-xl px-5" onClick={() => setActiveTab("meal")}>
             <UtensilsCrossed className="h-4 w-4" />
             Meal
           </Button>
-          <Button
-            type="button"
-            variant={activeTab === "restaurant" ? "default" : "ghost"}
-            className="h-10 rounded-xl px-5"
-            onClick={() => setActiveTab("restaurant")}
-          >
+          <Button type="button" variant={activeTab === "restaurant" ? "default" : "ghost"} className="h-10 rounded-xl px-5" onClick={() => setActiveTab("restaurant")}>
             <Store className="h-4 w-4" />
             Restaurants
           </Button>
         </div>
 
-        {activeTab === "meal" ? (
-          <Button type="button" className="h-10 rounded-xl bg-primary px-4 text-primary-foreground" onClick={() => setShowAdd((prev) => !prev)}>
-            <Plus className="h-4 w-4" />
-            Add Meal
-          </Button>
-        ) : (
-          <div className="inline-flex items-center gap-2 rounded-xl border border-border/60 bg-card/60 px-3 py-2 text-sm text-muted-foreground">
-            <MapPin className="h-4 w-4 text-primary" />
-            <span>{locationText}</span>
-            <Button type="button" variant="outline" className="h-8 rounded-lg px-3 text-xs" onClick={handleLocate} disabled={locating}>
-              <LocateFixed className="h-3.5 w-3.5" />
-              {locating ? "Locating..." : "Use my location"}
+        <div className="flex items-center gap-2">
+          {activeTab === "meal" ? (
+            <Button type="button" className="h-10 rounded-xl bg-primary px-4 text-primary-foreground" onClick={() => setShowAdd((prev) => !prev)}>
+              <Plus className="h-4 w-4" />
+              Add Meal
             </Button>
-          </div>
-        )}
+          ) : null}
+          <Button type="button" variant="outline" className="h-10 rounded-xl px-4" onClick={openHistory}>
+            <History className="h-4 w-4" />
+            History
+          </Button>
+        </div>
       </section>
 
       {activeTab === "meal" ? (
         <>
-          <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {macros.map((macro, index) => (
               <motion.article
                 key={macro.label}
@@ -371,9 +609,9 @@ const Food = () => {
                 <select
                   value={newMeal.type}
                   onChange={(event) => setNewMeal((prev) => ({ ...prev, type: event.target.value as Meal["type"] }))}
-                  className="h-11 rounded-xl border border-border/60 bg-card px-3 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/25"
+                  className="h-11 appearance-none rounded-xl border border-border/60 bg-card px-3 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/25"
                 >
-                  {["Breakfast", "Lunch", "Dinner", "Snack"].map((type) => (
+                  {allMealTypes.map((type) => (
                     <option key={type} value={type}>
                       {type}
                     </option>
@@ -397,6 +635,9 @@ const Food = () => {
                   Add
                 </Button>
               </div>
+              <p className="mt-2 text-xs text-muted-foreground">
+                You can log any meal type now. Use breakfast/lunch options for tomorrow planning if needed.
+              </p>
             </motion.section>
           ) : null}
 
@@ -405,45 +646,34 @@ const Food = () => {
               <UtensilsCrossed className="h-5 w-5 text-primary" />
               Today's Meals
             </h2>
-            <div className="space-y-3">
-              {meals.map((meal, index) => (
-                <motion.article
-                  key={`${meal.type}-${meal.time}-${index}`}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.04 }}
-                  className="flex items-center justify-between rounded-2xl border border-border/60 bg-card/55 p-3"
-                >
-                  <div>
-                    <p className="text-sm font-semibold">{meal.type}</p>
-                    <p className="text-xs text-muted-foreground">{meal.items}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-semibold">{meal.calories} kcal</p>
-                    <p className="text-xs text-muted-foreground">{meal.time}</p>
-                  </div>
-                </motion.article>
-              ))}
-            </div>
-          </section>
-
-          <section className="glass-card rounded-3xl border-border/50 p-6">
-            <h2 className="mb-4 flex items-center gap-2 text-xl font-semibold">
-              <Sparkles className="h-5 w-5 text-health-violet" />
-              AI Diet Suggestions
-            </h2>
-            <div className="grid gap-3 sm:grid-cols-2">
-              {[
-                "Add omega-3 sources like chia seeds or walnuts to breakfast.",
-                "Protein is below target today. Include a high-protein snack post-workout.",
-                "Fiber intake is strong. Continue whole grains and mixed vegetables.",
-                "Swap refined carbs with sweet potatoes or quinoa for steadier energy.",
-              ].map((tip) => (
-                <div key={tip} className="rounded-2xl border border-border/60 bg-card/55 p-3 text-sm leading-relaxed text-muted-foreground">
-                  {tip}
-                </div>
-              ))}
-            </div>
+            {todaysMeals.length ? (
+              <div className="space-y-3">
+                {todaysMeals.map((meal, index) => (
+                  <motion.article
+                    key={`${meal.type}-${meal.loggedAt}-${index}`}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.04 }}
+                    className="flex items-center justify-between rounded-2xl border border-border/60 bg-card/55 p-3"
+                  >
+                    <div>
+                      <p className="text-sm font-semibold">{meal.type}</p>
+                      <p className="text-xs text-muted-foreground">{meal.items}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-semibold">{meal.calories} kcal</p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(meal.loggedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      </p>
+                    </div>
+                  </motion.article>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-dashed border-border/70 bg-card/45 p-4 text-sm text-muted-foreground">
+                No meals added for today yet. Use Add Meal to track today's food.
+              </div>
+            )}
           </section>
         </>
       ) : (
@@ -459,48 +689,71 @@ const Food = () => {
                 className="h-11 w-full rounded-xl border border-border/60 bg-card px-10 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/25"
               />
             </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {[
+                { key: "all", label: "All" },
+                { key: "veg", label: "Veg Only" },
+                { key: "non_veg", label: "Non-Veg" },
+              ].map((option) => (
+                <Button
+                  key={option.key}
+                  type="button"
+                  variant={dietPreference === option.key ? "default" : "outline"}
+                  className="h-8 rounded-lg px-3 text-xs"
+                  onClick={() => setDietPreference(option.key as "all" | "veg" | "non_veg")}
+                >
+                  {option.label}
+                </Button>
+              ))}
+            </div>
+            {quickSuggestions.length ? (
+              <div className="mt-3">
+                <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">What to eat now</p>
+                <div className="flex flex-wrap gap-2">
+                  {quickSuggestions.map((name) => (
+                    <span key={name} className="rounded-full border border-border/60 bg-card px-3 py-1 text-xs text-muted-foreground">
+                      {name}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+            {restaurantError ? <p className="mt-3 text-sm text-health-rose">{restaurantError}</p> : null}
           </section>
 
-          <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {restaurantCards.length ? (
-              restaurantCards.map((restaurant, index) => (
-                <motion.button
-                  key={restaurant.id}
-                  type="button"
-                  onClick={() => {
-                    setSelectedRestaurantId(restaurant.id);
-                    setSelectedDishId(restaurant.menu[0]?.id ?? null);
-                  }}
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.04 }}
-                  className="glass-card hover-lift rounded-3xl border-border/50 p-5 text-left"
-                >
-                  <div className="mb-4 flex items-center justify-between">
-                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/12 text-3xl">{restaurant.heroIcon}</div>
-                    <div className="rounded-xl bg-card/70 px-2.5 py-1 text-xs font-semibold text-primary">{restaurant.cuisine}</div>
-                  </div>
-                  <h3 className="text-lg font-bold">{restaurant.name}</h3>
-                  <p className="mt-1 text-xs text-muted-foreground">{restaurant.location}</p>
-                  <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
-                    <span className="inline-flex items-center gap-1">
-                      <Star className="h-3.5 w-3.5 text-yellow-500" />
-                      {restaurant.rating.toFixed(1)}
-                    </span>
-                    <span className="inline-flex items-center gap-1">
-                      <Clock3 className="h-3.5 w-3.5 text-primary" />
-                      {restaurant.deliveryEta}
-                    </span>
-                    <span>{restaurant.distance.toFixed(1)} km</span>
-                  </div>
-                </motion.button>
-              ))
-            ) : (
-              <div className="glass-card col-span-full rounded-3xl border-border/50 p-6 text-sm text-muted-foreground">
-                No restaurants found for this search.
-              </div>
-            )}
-          </section>
+          {restaurantLoading ? (
+            <section className="glass-card rounded-3xl border-border/50 p-6 text-sm text-muted-foreground">Loading restaurants...</section>
+          ) : (
+            <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {restaurantCards.length ? (
+                restaurantCards.map((restaurant, index) => (
+                  <motion.button
+                    key={restaurant.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedRestaurantId(restaurant.id);
+                      setSelectedDishId(null);
+                      setMenuQuery("");
+                      setPendingChoice(null);
+                      setChooseResult(null);
+                    }}
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.04 }}
+                    className="glass-card hover-lift rounded-3xl border-border/50 p-5 text-left"
+                  >
+                    <div className="mb-4 inline-flex rounded-xl bg-primary/12 px-2.5 py-1 text-xs font-semibold text-primary">{restaurant.cuisine}</div>
+                    <h3 className="text-lg font-bold">{restaurant.name}</h3>
+                    <p className="mt-2 text-xs text-muted-foreground">{restaurant.dish_count} dishes available</p>
+                  </motion.button>
+                ))
+              ) : (
+                <div className="glass-card col-span-full rounded-3xl border-border/50 p-6 text-sm text-muted-foreground">
+                  No restaurants found for this search.
+                </div>
+              )}
+            </section>
+          )}
         </>
       )}
 
@@ -509,14 +762,7 @@ const Food = () => {
             <AnimatePresence>
               {selectedRestaurant ? (
                 <motion.div className="fixed inset-0 z-[100]" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                  <button
-                    type="button"
-                    className="absolute inset-0 bg-black/55 backdrop-blur-sm"
-                    onClick={() => {
-                      setSelectedRestaurantId(null);
-                      setSelectedDishId(null);
-                    }}
-                  />
+                  <button type="button" className="absolute inset-0 bg-black/55 backdrop-blur-sm" onClick={closeRestaurantModal} />
 
                   <div className="absolute inset-0 flex items-center justify-center p-3 sm:p-6">
                     <motion.section
@@ -529,111 +775,300 @@ const Food = () => {
                       <div className="flex items-center justify-between border-b border-border/60 px-4 py-4 sm:px-6">
                         <div className="min-w-0">
                           <h3 className="truncate text-xl font-bold">{selectedRestaurant.name}</h3>
-                          <p className="text-sm text-muted-foreground">Tap a dish to see recommendation impact</p>
+                          <p className="text-sm text-muted-foreground">Search dishes, view alert level, then choose.</p>
                         </div>
-                        <Button
-                          type="button"
-                          size="icon"
-                          variant="ghost"
-                          className="h-10 w-10 rounded-xl"
-                          onClick={() => {
-                            setSelectedRestaurantId(null);
-                            setSelectedDishId(null);
-                          }}
-                        >
+                        <Button type="button" size="icon" variant="ghost" className="h-10 w-10 rounded-xl" onClick={closeRestaurantModal}>
                           <X className="h-5 w-5" />
                         </Button>
                       </div>
 
-                      <div className="grid flex-1 min-h-0 gap-4 overflow-y-auto overflow-x-hidden p-4 sm:p-6 2xl:grid-cols-[minmax(0,1.12fr)_minmax(0,0.88fr)]">
-                        <article className="min-w-0">
+                      <div className="grid flex-1 min-h-0 gap-4 overflow-y-auto overflow-x-hidden p-4 sm:p-6 2xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
+                        <article className="order-2 min-w-0 2xl:order-1">
                           <h4 className="mb-3 text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">Menu List</h4>
+
+                          <div className="mb-4 rounded-2xl border border-border/60 bg-card/70 p-3">
+                            <div className="relative">
+                              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                              <input
+                                type="text"
+                                value={menuQuery}
+                                onChange={(event) => setMenuQuery(event.target.value)}
+                                placeholder="Search dishes in this restaurant"
+                                className="h-10 w-full rounded-xl border border-border/60 bg-card px-9 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/25"
+                              />
+                            </div>
+
+                            {menuQuery.trim() ? (
+                              <div className="mt-3 space-y-2">
+                                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Suggestions</p>
+                                {suggestionLoading ? (
+                                  <p className="text-xs text-muted-foreground">Loading suggestions...</p>
+                                ) : visibleSuggestions.length ? (
+                                  <div className="flex flex-wrap gap-2">
+                                    {visibleSuggestions.map((suggestion) => (
+                                      <button
+                                        key={suggestion.dish_id}
+                                        type="button"
+                                        className="rounded-full border border-border/60 bg-card px-3 py-1.5 text-xs hover:border-primary/40"
+                                        onClick={() => {
+                                          setSelectedDishId(suggestion.dish_id);
+                                          setMenuQuery(suggestion.dish_name);
+                                        }}
+                                      >
+                                        {suggestion.dish_name}
+                                      </button>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <p className="text-xs text-muted-foreground">No dish suggestions for this search.</p>
+                                )}
+                              </div>
+                            ) : null}
+                          </div>
+
                           <div className="grid gap-3 md:grid-cols-2">
-                            {selectedRestaurant.menu.map((dish) => (
-                              <button
-                                key={dish.id}
-                                type="button"
-                                onClick={() => setSelectedDishId(dish.id)}
-                                className={`rounded-2xl border p-4 text-left transition hover:translate-y-[-1px] ${
-                                  selectedDishId === dish.id
-                                    ? "border-primary bg-primary/12 shadow-[0_16px_40px_-24px_hsl(var(--primary)/0.7)]"
-                                    : "border-border/60 bg-card/70"
-                                }`}
-                              >
-                                <div className="mb-3 flex items-center justify-between">
-                                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-2xl">{dish.imageIcon}</div>
-                                  <span className="text-sm font-bold text-primary">₹{dish.price}</span>
-                                </div>
-                                <p className="text-sm font-semibold">{dish.name}</p>
-                                <div className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground">
-                                  <span>{dish.calories} kcal</span>
-                                  <span>Score {dish.healthScore}</span>
-                                </div>
-                              </button>
-                            ))}
+                            {filteredDishes.length ? (
+                              filteredDishes.map((dish) => {
+                                const meta = alertMeta[dish.alert];
+                                return (
+                                  <div
+                                    key={dish.id}
+                                    className={`rounded-2xl border p-4 text-left transition ${
+                                      selectedDishId === dish.id
+                                        ? "border-primary bg-primary/12 shadow-[0_16px_40px_-24px_hsl(var(--primary)/0.7)]"
+                                        : "border-border/60 bg-card/70"
+                                    }`}
+                                  >
+                                    <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                                      <button type="button" className="text-left" onClick={() => setSelectedDishId(dish.id)}>
+                                        <p className="text-sm font-semibold">{dish.name}</p>
+                                      </button>
+                                      <span className={`inline-flex rounded-full px-2 py-1 text-[11px] font-semibold ${meta.badgeClass}`}>{meta.label}</span>
+                                    </div>
+                                    <div className="mb-3 text-[11px] text-muted-foreground">
+                                      {dish.calories} kcal | Protein {dish.protein_g} g | Sodium {dish.sodium_mg} mg
+                                    </div>
+                                    <Button
+                                      type="button"
+                                      className={`h-8 rounded-lg border px-3 text-xs ${meta.chooseButtonClass}`}
+                                      onClick={() => toggleDishChoice(dish)}
+                                    >
+                                      {pendingChoice?.dishId === dish.id ? "Cancel" : dish.choose_button_label}
+                                    </Button>
+
+                                    <AnimatePresence>
+                                      {selectedDishId === dish.id ? (
+                                        <motion.div
+                                          initial={{ opacity: 0, height: 0 }}
+                                          animate={{ opacity: 1, height: "auto" }}
+                                          exit={{ opacity: 0, height: 0 }}
+                                          transition={{ duration: 0.2 }}
+                                          className="mt-3 space-y-2 overflow-hidden md:hidden"
+                                        >
+                                          <p className="text-xs text-muted-foreground">{dish.alert_message}</p>
+                                          <div className="grid grid-cols-2 gap-2 text-[11px] text-muted-foreground">
+                                            <div className="rounded-lg border border-border/60 bg-card/80 px-2 py-1">Calories: {dish.calories}</div>
+                                            <div className="rounded-lg border border-border/60 bg-card/80 px-2 py-1">Protein: {dish.protein_g} g</div>
+                                            <div className="rounded-lg border border-border/60 bg-card/80 px-2 py-1">Carbs: {dish.carbs_g} g</div>
+                                            <div className="rounded-lg border border-border/60 bg-card/80 px-2 py-1">Fat: {dish.fat_g} g</div>
+                                          </div>
+                                          <div className="rounded-lg border border-border/60 bg-card/80 px-2 py-1 text-[11px] text-muted-foreground">
+                                            Vitamins: {dish.vitamins.length ? dish.vitamins.join(", ") : "Not specified"}
+                                          </div>
+
+                                          {pendingChoice?.dishId === dish.id ? (
+                                            <div className={`rounded-lg border p-2 text-xs ${alertMeta[pendingChoice.alert].panelClass}`}>
+                                              <p>{pendingChoice.message}</p>
+                                              <div className="mt-2 flex items-center justify-end gap-2">
+                                                <Button type="button" variant="outline" className="h-7 rounded-md px-2 text-[11px]" onClick={cancelDishChoice}>
+                                                  Cancel
+                                                </Button>
+                                                <Button
+                                                  type="button"
+                                                  className={`h-7 rounded-md px-2 text-[11px] ${alertMeta[pendingChoice.alert].confirmButtonClass}`}
+                                                  onClick={confirmDishChoice}
+                                                  disabled={confirmingChoice}
+                                                >
+                                                  {confirmingChoice ? "Confirming..." : "Confirm"}
+                                                </Button>
+                                              </div>
+                                            </div>
+                                          ) : chooseResult?.dishId === dish.id ? (
+                                            <div className={`rounded-lg border p-2 text-xs ${alertMeta[chooseResult.alert].panelClass}`}>
+                                              {chooseResult.message}
+                                            </div>
+                                          ) : null}
+                                        </motion.div>
+                                      ) : null}
+                                    </AnimatePresence>
+                                  </div>
+                                );
+                              })
+                            ) : (
+                              <div className="rounded-2xl border border-dashed border-border/70 bg-card/45 p-4 text-sm text-muted-foreground">
+                                No dishes found for this menu search.
+                              </div>
+                            )}
                           </div>
                         </article>
 
-                        <article className="min-w-0 space-y-4">
+                        <article className="order-1 min-w-0 space-y-4 2xl:order-2">
                           <div className="rounded-2xl border border-border/60 bg-card/65 p-4">
-                            <p className="text-sm font-semibold text-primary">Recommended first</p>
+                            <p className="text-sm font-semibold text-primary">Suggested first</p>
                             <div className="mt-3 grid gap-2">
-                              {recommendedDishes.map((dish) => (
-                                <div key={dish.id} className="flex items-center gap-3 rounded-xl border border-border/60 bg-card/80 p-2.5">
-                                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-health-teal/12 text-xl">{dish.imageIcon}</div>
-                                  <div className="min-w-0">
-                                    <p className="truncate text-sm font-semibold">{dish.name}</p>
-                                    <p className="text-xs text-muted-foreground">Score {dish.healthScore} • ₹{dish.price}</p>
+                              {recommendedDishes.map((dish) => {
+                                const meta = alertMeta[dish.alert];
+                                return (
+                                  <div key={dish.id} className="flex items-center justify-between gap-3 rounded-xl border border-border/60 bg-card/80 p-2.5">
+                                    <div className="min-w-0">
+                                      <p className="truncate text-sm font-semibold">{dish.name}</p>
+                                      <p className="text-xs text-muted-foreground">{dish.calories} kcal | Protein {dish.protein_g} g</p>
+                                    </div>
+                                    <span className={`inline-flex rounded-full px-2 py-1 text-[11px] font-semibold ${meta.badgeClass}`}>{meta.label}</span>
                                   </div>
-                                </div>
-                              ))}
+                                );
+                              })}
                             </div>
                           </div>
 
                           {selectedDish ? (
-                            <div className="rounded-2xl border border-border/60 bg-card/65 p-4">
+                            <div className="hidden rounded-2xl border border-border/60 bg-card/65 p-4 md:block">
                               {(() => {
-                                const impact = getDishImpact(selectedDish);
+                                const meta = alertMeta[selectedDish.alert];
                                 return (
                                   <>
-                                    <div className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${impact.surface} ${impact.tone}`}>{impact.label}</div>
-                                    <p className="mt-3 text-sm text-muted-foreground">{impact.note}</p>
+                                    <div className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${meta.badgeClass}`}>{meta.label} alert</div>
+                                    <p className="mt-3 text-sm font-semibold">{selectedDish.name}</p>
+                                    <p className="mt-1 text-sm text-muted-foreground">{selectedDish.alert_message}</p>
 
-                                    <div className="mt-4 space-y-3">
-                                      {impact.loads.map((metric) => (
-                                        <div key={metric.key}>
-                                          <div className="mb-1.5 flex items-center justify-between text-xs">
-                                            <span>{metric.key}</span>
-                                            <span className="font-semibold">{metric.value}%</span>
-                                          </div>
-                                          <div className="h-2 rounded-full bg-muted">
-                                            <div
-                                              className={`h-full rounded-full ${
-                                                metric.value >= 70 ? "bg-health-rose" : metric.value >= 45 ? "bg-yellow-500" : "bg-health-teal"
-                                              }`}
-                                              style={{ width: `${Math.min(metric.value, 100)}%` }}
-                                            />
-                                          </div>
+                                    <div className="mt-4 grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+                                      <div className="rounded-xl border border-border/60 bg-card/80 p-2">Calories: {selectedDish.calories}</div>
+                                      <div className="rounded-xl border border-border/60 bg-card/80 p-2">Protein: {selectedDish.protein_g} g</div>
+                                      <div className="rounded-xl border border-border/60 bg-card/80 p-2">Carbs: {selectedDish.carbs_g} g</div>
+                                      <div className="rounded-xl border border-border/60 bg-card/80 p-2">Fat: {selectedDish.fat_g} g</div>
+                                      <div className="rounded-xl border border-border/60 bg-card/80 p-2">Fiber: {selectedDish.fiber_g} g</div>
+                                      <div className="rounded-xl border border-border/60 bg-card/80 p-2">Sodium: {selectedDish.sodium_mg} mg</div>
+                                    </div>
+
+                                    <div className="mt-3 rounded-xl border border-border/60 bg-card/80 p-3 text-xs text-muted-foreground">
+                                      Vitamins: {selectedDish.vitamins.length ? selectedDish.vitamins.join(", ") : "Not specified"}
+                                    </div>
+
+                                    {pendingChoice ? (
+                                      <div className={`mt-4 rounded-xl border p-3 text-sm ${alertMeta[pendingChoice.alert].panelClass}`}>
+                                        <p>{pendingChoice.message}</p>
+                                        <div className="mt-3 flex justify-end gap-2">
+                                          <Button type="button" variant="outline" className="h-8 rounded-lg px-3 text-xs" onClick={cancelDishChoice}>
+                                            Cancel
+                                          </Button>
+                                          <Button
+                                            type="button"
+                                            className={`h-8 rounded-lg px-3 text-xs ${
+                                              alertMeta[pendingChoice.alert].confirmButtonClass
+                                            }`}
+                                            onClick={confirmDishChoice}
+                                            disabled={confirmingChoice}
+                                          >
+                                            {confirmingChoice ? "Confirming..." : "Confirm"}
+                                          </Button>
                                         </div>
-                                      ))}
-                                    </div>
-
-                                    <div className="mt-4 rounded-xl bg-card/80 p-3 text-xs text-muted-foreground">
-                                      <span className="inline-flex items-center gap-1 text-health-rose">
-                                        <ShieldAlert className="h-3.5 w-3.5" />
-                                        If this is your frequent choice, balance with hydration + lighter next meal.
-                                      </span>
-                                    </div>
+                                      </div>
+                                    ) : chooseResult?.dishId === selectedDish.id ? (
+                                      <div className={`mt-4 flex items-start gap-2 rounded-xl border p-3 text-sm ${alertMeta[chooseResult.alert].panelClass}`}>
+                                        {(() => {
+                                          const ConfirmIcon = alertMeta[chooseResult.alert].icon;
+                                          return <ConfirmIcon className="mt-0.5 h-4 w-4 shrink-0" />;
+                                        })()}
+                                        <p>{chooseResult.message}</p>
+                                      </div>
+                                    ) : (
+                                      <div className="mt-4 rounded-xl border border-border/60 bg-card/80 p-3 text-xs text-muted-foreground">
+                                        Press <span className="font-semibold">Choose</span>, then <span className="font-semibold">Confirm</span> to save in food analysis.
+                                      </div>
+                                    )}
                                   </>
                                 );
                               })()}
                             </div>
                           ) : (
-                            <div className="rounded-2xl border border-dashed border-border/70 bg-card/45 p-4 text-sm text-muted-foreground">
-                              Select any dish to see visual health impact.
+                            <div className="hidden rounded-2xl border border-dashed border-border/70 bg-card/45 p-4 text-sm text-muted-foreground md:block">
+                              Select any dish to see nutrition and alert guidance.
                             </div>
                           )}
                         </article>
+                      </div>
+                    </motion.section>
+                  </div>
+                </motion.div>
+              ) : null}
+
+              {showHistory ? (
+                <motion.div className="fixed inset-0 z-[110]" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                  <button type="button" className="absolute inset-0 bg-black/55 backdrop-blur-sm" onClick={() => setShowHistory(false)} />
+                  <div className="absolute inset-0 flex items-center justify-center p-3 sm:p-6">
+                    <motion.section
+                      initial={{ opacity: 0, scale: 0.96, y: 20 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.96, y: 20 }}
+                      transition={{ duration: 0.2 }}
+                      className="flex h-full max-h-[88vh] w-full max-w-3xl flex-col overflow-hidden rounded-3xl border border-border/70 bg-card shadow-[0_32px_80px_-28px_hsl(215_40%_5%/0.75)]"
+                    >
+                      <div className="flex items-center justify-between border-b border-border/60 px-4 py-4 sm:px-6">
+                        <div>
+                          <h3 className="text-xl font-bold">Food History</h3>
+                          <p className="text-sm text-muted-foreground">Date, dish, restaurant, and alert from confirmed choices.</p>
+                        </div>
+                        <Button type="button" size="icon" variant="ghost" className="h-10 w-10 rounded-xl" onClick={() => setShowHistory(false)}>
+                          <X className="h-5 w-5" />
+                        </Button>
+                      </div>
+
+                      <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
+                        {historyLoading ? (
+                          <div className="rounded-2xl border border-border/60 bg-card/55 p-4 text-sm text-muted-foreground">Loading history...</div>
+                        ) : historyError ? (
+                          <div className="rounded-2xl border border-health-rose/40 bg-health-rose/10 p-4 text-sm text-health-rose">{historyError}</div>
+                        ) : (
+                          <div className="space-y-3">
+                            {historyFoodSummary?.latest_item ? (
+                              <div className="rounded-2xl border border-border/60 bg-card/55 p-4">
+                                <p className="text-xs text-muted-foreground">Latest food analysis</p>
+                                <p className="mt-1 text-sm font-semibold">{historyFoodSummary.latest_item}</p>
+                                <p className="mt-1 text-xs text-muted-foreground">
+                                  Alert: {historyFoodSummary.latest_alert ?? "N/A"} | {historyFoodSummary.latest_calories ?? 0} kcal | Sodium{" "}
+                                  {historyFoodSummary.latest_sodium_mg ?? 0} mg
+                                </p>
+                                <p className="mt-1 text-xs text-muted-foreground">{historyFoodSummary.latest_note ?? "No note available."}</p>
+                                <p className="mt-1 text-xs text-muted-foreground">
+                                  Green {historyFoodSummary.alert_counts?.green ?? 0} | Yellow {historyFoodSummary.alert_counts?.yellow ?? 0} | Red{" "}
+                                  {historyFoodSummary.alert_counts?.red ?? 0} | Total {historyFoodSummary.recent_choices ?? 0}
+                                </p>
+                              </div>
+                            ) : null}
+
+                            {historyItems.length ? (
+                              historyItems.map((item) => {
+                                const alert = toAlertLevel(item.impact_label);
+                                const meta = alertMeta[alert];
+                                return (
+                                  <div key={item.id} className="rounded-2xl border border-border/60 bg-card/55 p-4">
+                                    <div className="flex flex-wrap items-center justify-between gap-2">
+                                      <p className="text-sm font-semibold">{item.dish_name ?? "Dish not available"}</p>
+                                      <span className={`inline-flex rounded-full px-2 py-1 text-[11px] font-semibold ${meta.badgeClass}`}>{meta.label}</span>
+                                    </div>
+                                    <p className="mt-1 text-xs text-muted-foreground">{item.restaurant_name}</p>
+                                    <p className="mt-1 text-xs text-muted-foreground">Risk alert: {meta.label}</p>
+                                    <p className="mt-1 text-xs text-muted-foreground">{new Date(item.created_at).toLocaleString()}</p>
+                                  </div>
+                                );
+                              })
+                            ) : (
+                              <div className="rounded-2xl border border-dashed border-border/70 bg-card/45 p-4 text-sm text-muted-foreground">
+                                No confirmed food history yet.
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </motion.section>
                   </div>

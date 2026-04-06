@@ -104,7 +104,7 @@ const Settings = () => {
 
             <div className="rounded-2xl border border-border/60 bg-card/55 px-4 py-3">
               <label className="mb-1 block text-xs text-muted-foreground">Language</label>
-              <select className="h-9 w-full rounded-lg border border-border/60 bg-card px-3 text-sm outline-none focus:ring-2 focus:ring-primary/20">
+              <select className="h-9 w-full appearance-none rounded-lg border border-border/60 bg-card px-3 text-sm outline-none focus:ring-2 focus:ring-primary/20">
                 <option>English</option>
                 <option>Hindi</option>
               </select>
@@ -112,7 +112,7 @@ const Settings = () => {
 
             <div className="rounded-2xl border border-border/60 bg-card/55 px-4 py-3">
               <label className="mb-1 block text-xs text-muted-foreground">Unit System</label>
-              <select className="h-9 w-full rounded-lg border border-border/60 bg-card px-3 text-sm outline-none focus:ring-2 focus:ring-primary/20">
+              <select className="h-9 w-full appearance-none rounded-lg border border-border/60 bg-card px-3 text-sm outline-none focus:ring-2 focus:ring-primary/20">
                 <option>Metric</option>
                 <option>Imperial</option>
               </select>
@@ -205,7 +205,7 @@ const Settings = () => {
           <div className="space-y-3">
             <div className="rounded-2xl border border-border/60 bg-card/55 px-4 py-3">
               <label className="mb-1 block text-xs text-muted-foreground">Time Zone</label>
-              <select className="h-9 w-full rounded-lg border border-border/60 bg-card px-3 text-sm outline-none focus:ring-2 focus:ring-primary/20">
+              <select className="h-9 w-full appearance-none rounded-lg border border-border/60 bg-card px-3 text-sm outline-none focus:ring-2 focus:ring-primary/20">
                 <option>Asia/Kolkata</option>
                 <option>UTC</option>
                 <option>America/New_York</option>

@@ -6,10 +6,12 @@ import {
   AlertTriangle,
   CheckCircle2,
   ChevronRight,
+  Dumbbell,
   Download,
   Footprints,
   HeartPulse,
   Moon,
+  Plus,
   Send,
   Sparkles,
   Stethoscope,
@@ -17,6 +19,7 @@ import {
   X,
   XCircle,
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/Button";
 import { getAccessToken, getApiBaseUrl } from "@/lib/auth";
@@ -56,12 +59,34 @@ type ChatMessage = {
   text: string;
 };
 
+type ExerciseTask = {
+  id: string;
+  title: string;
+  detail: string;
+  completed: boolean;
+};
+
 type ExportScope = "complete" | "weekly" | "this_month";
 
 type RiskOverview = {
   sleep: { duration_minutes?: number | null; quality_score?: number | null; sleep_date?: string | null } | null;
   activity: { steps?: number | null; workout_minutes?: number | null } | null;
   vitals: { heart_rate?: number | null; systolic_bp?: number | null } | null;
+  food:
+    | {
+        latest_item?: string | null;
+        latest_logged_at?: string | null;
+        latest_calories?: number | null;
+        latest_sodium_mg?: number | null;
+        latest_note?: string | null;
+        latest_alert?: string | null;
+        latest_dish_name?: string | null;
+        latest_restaurant_name?: string | null;
+        latest_choice_at?: string | null;
+        alert_counts?: { green?: number; yellow?: number; red?: number } | null;
+        recent_choices?: number | null;
+      }
+    | null;
 };
 
 type HealthRiskApiResponse = {
@@ -155,10 +180,18 @@ const buildRiskPayload = (
   const heightCm = profile?.height_cm ?? null;
   const weightKg = profile?.weight_kg ?? null;
   const bmi = heightCm && weightKg ? weightKg / ((heightCm / 100) * (heightCm / 100)) : 24;
-  const systolic = overview?.vitals?.systolic_bp ?? 120;
+  const latestFoodSodium = overview?.food?.latest_sodium_mg ?? 0;
+  const sodiumBpBoost = latestFoodSodium >= 1200 ? 10 : latestFoodSodium >= 800 ? 5 : 0;
+  const systolic = (overview?.vitals?.systolic_bp ?? 120) + sodiumBpBoost;
   const heartRate = overview?.vitals?.heart_rate ?? 150;
   const steps = overview?.activity?.steps ?? 0;
-  const stress: "low" | "medium" | "high" = steps < 4000 ? "high" : steps < 8000 ? "medium" : "low";
+  const latestFoodAlert = (overview?.food?.latest_alert ?? "").trim().toLowerCase();
+  let stress: "low" | "medium" | "high" = steps < 4000 ? "high" : steps < 8000 ? "medium" : "low";
+  if (latestFoodAlert === "red") {
+    stress = "high";
+  } else if (latestFoodAlert === "yellow" && stress === "low") {
+    stress = "medium";
+  }
   const sex = (gender ?? "").toLowerCase().startsWith("m") ? 1 : 0;
 
   return {
@@ -191,6 +224,9 @@ const buildConditionRisksFromApi = (risk: HealthRiskApiResponse, overview: RiskO
   const vitalsSummary = overview?.vitals
     ? `Latest vitals: HR ${overview.vitals.heart_rate ?? "N/A"}, BP ${overview.vitals.systolic_bp ?? "N/A"}`
     : "Vitals logs not available yet.";
+  const foodSummary = overview?.food?.latest_item
+    ? `Latest food: ${overview.food.latest_item} (${overview.food.latest_alert ?? "N/A"} alert)`
+    : "No restaurant food analysis logged yet.";
 
   return [
     {
@@ -201,7 +237,7 @@ const buildConditionRisksFromApi = (risk: HealthRiskApiResponse, overview: RiskO
       probability: risk.conditions.diabetes.probability,
       summary: risk.conditions.diabetes.reasons[0] || "Model-based diabetes estimate generated.",
       reasons: risk.conditions.diabetes.reasons.length ? risk.conditions.diabetes.reasons : ["No major diabetes markers detected."],
-      last30Days: [sleepSummary, activitySummary],
+      last30Days: [sleepSummary, activitySummary, foodSummary],
       recommendations: ["Reduce added sugar intake.", "Keep post-meal walk habit.", "Log fasting sugar regularly."],
     },
     {
@@ -214,7 +250,7 @@ const buildConditionRisksFromApi = (risk: HealthRiskApiResponse, overview: RiskO
       reasons: risk.conditions.hypertension.reasons.length
         ? risk.conditions.hypertension.reasons
         : ["No major hypertension markers detected."],
-      last30Days: [vitalsSummary, activitySummary],
+      last30Days: [vitalsSummary, activitySummary, foodSummary],
       recommendations: ["Track BP at fixed time daily.", "Lower sodium intake.", "Add stress management routine."],
     },
     {
@@ -225,7 +261,7 @@ const buildConditionRisksFromApi = (risk: HealthRiskApiResponse, overview: RiskO
       probability: risk.conditions.heart.probability,
       summary: risk.conditions.heart.reasons[0] || "Model-based heart-risk estimate generated.",
       reasons: risk.conditions.heart.reasons.length ? risk.conditions.heart.reasons : ["No major heart markers detected."],
-      last30Days: [vitalsSummary, activitySummary],
+      last30Days: [vitalsSummary, activitySummary, foodSummary],
       recommendations: ["Maintain regular cardio.", "Keep BP and pulse monitoring active.", "Avoid prolonged inactivity."],
     },
     {
@@ -236,7 +272,7 @@ const buildConditionRisksFromApi = (risk: HealthRiskApiResponse, overview: RiskO
       probability: levelToProbability(risk.conditions.obesity.level),
       summary: `BMI based assessment: ${risk.conditions.obesity.bmi}`,
       reasons: ["BMI-based risk score was used."],
-      last30Days: [activitySummary, sleepSummary],
+      last30Days: [activitySummary, sleepSummary, foodSummary],
       recommendations: ["Maintain calorie balance.", "Keep protein-focused meals.", "Track body weight weekly."],
     },
     {
@@ -247,7 +283,7 @@ const buildConditionRisksFromApi = (risk: HealthRiskApiResponse, overview: RiskO
       probability: levelToProbability(risk.conditions.aqi_risk.level),
       summary: `AQI risk level: ${risk.conditions.aqi_risk.level}`,
       reasons: [risk.conditions.aqi_risk.advice],
-      last30Days: ["Respiratory exposure risk uses AQI trend + overall risk.", vitalsSummary],
+      last30Days: ["Respiratory exposure risk uses AQI trend + overall risk.", vitalsSummary, foodSummary],
       recommendations: ["Use mask on poor AQI days.", "Prefer indoor workouts on high AQI.", "Check AQI before commute."],
     },
   ];
@@ -271,7 +307,31 @@ const levelIcon = (level: RiskLevel): LucideIcon => {
   return XCircle;
 };
 
+const buildExercisePlan = (hour: number): ExerciseTask[] => {
+  if (hour >= 5 && hour < 12) {
+    return [
+      { id: "walk", title: "20 min brisk walk", detail: "Wake-up mobility and light cardio.", completed: false },
+      { id: "stretch", title: "10 min stretching", detail: "Neck, back, and hamstring mobility.", completed: false },
+      { id: "breath", title: "8 min breathing", detail: "Calm breathing before work.", completed: false },
+    ];
+  }
+  if (hour >= 12 && hour < 18) {
+    return [
+      { id: "run", title: "25 min run", detail: "Moderate pace cardio session.", completed: false },
+      { id: "core", title: "15 min core", detail: "Plank and bodyweight core set.", completed: false },
+      { id: "meditation", title: "30 min meditation", detail: "Recovery + stress control.", completed: false },
+    ];
+  }
+  return [
+    { id: "walk_evening", title: "20 min evening walk", detail: "Light recovery and digestion support.", completed: false },
+    { id: "yoga", title: "15 min yoga flow", detail: "Easy movement before sleep.", completed: false },
+    { id: "meditation_night", title: "30 min meditation", detail: "Wind down and improve sleep quality.", completed: false },
+  ];
+};
+
 const Health = () => {
+  const navigate = useNavigate();
+  const [planHour, setPlanHour] = useState<number>(() => new Date().getHours());
   const [symptom, setSymptom] = useState("");
   const [isExporting, setIsExporting] = useState(false);
   const [exportError, setExportError] = useState("");
@@ -280,6 +340,10 @@ const Health = () => {
   const [conditionRisks, setConditionRisks] = useState<ConditionRisk[]>(() => buildPlaceholderConditionRisks());
   const [riskInfoMessage, setRiskInfoMessage] = useState("Add your health logs to generate personalized risk alerts.");
   const [isRiskLoading, setIsRiskLoading] = useState(true);
+  const [riskOverview, setRiskOverview] = useState<RiskOverview | null>(null);
+  const [exercisePlan, setExercisePlan] = useState<ExerciseTask[]>(() => buildExercisePlan(new Date().getHours()));
+  const [customExercise, setCustomExercise] = useState("");
+  const [customExerciseLogs, setCustomExerciseLogs] = useState<ExerciseTask[]>([]);
   const [selectedRiskId, setSelectedRiskId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -289,9 +353,22 @@ const Health = () => {
   ]);
 
   const selectedRisk = conditionRisks.find((risk) => risk.id === selectedRiskId) ?? null;
+  const foodOverview = riskOverview?.food ?? null;
 
   const maxHeartRate = Math.max(...trendData.map((point) => point.heartRate));
   const maxSteps = Math.max(...trendData.map((point) => point.steps));
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      const currentHour = new Date().getHours();
+      setPlanHour((prev) => (prev === currentHour ? prev : currentHour));
+    }, 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    setExercisePlan(buildExercisePlan(planHour));
+  }, [planHour]);
 
   useEffect(() => {
     let cancelled = false;
@@ -309,11 +386,13 @@ const Health = () => {
 
       const user = userResponse.data;
       const overview = overviewResponse.data ?? null;
+      setRiskOverview(overview);
       const hasVitals = Boolean(overview?.vitals && (overview.vitals.systolic_bp ?? overview.vitals.heart_rate));
       const hasActivity = Boolean(overview?.activity && ((overview.activity.steps ?? 0) > 0 || (overview.activity.workout_minutes ?? 0) > 0));
       const hasBodyProfile = Boolean(user?.profile?.height_cm && user?.profile?.weight_kg);
+      const hasFood = Boolean((overview?.food?.recent_choices ?? 0) > 0 || overview?.food?.latest_item);
 
-      if (!user || (!hasVitals && !hasActivity && !hasBodyProfile)) {
+      if (!user || (!hasVitals && !hasActivity && !hasBodyProfile && !hasFood)) {
         setConditionRisks(buildPlaceholderConditionRisks());
         setRiskInfoMessage("No personal health logs found yet. Add vitals/activity/profile data for personalized risk.");
         setIsRiskLoading(false);
@@ -419,6 +498,46 @@ const Health = () => {
     setSymptom("");
   };
 
+  const toggleExerciseCompleted = (taskId: string) => {
+    setExercisePlan((prev) =>
+      prev.map((task) => (task.id === taskId ? { ...task, completed: !task.completed } : task)),
+    );
+  };
+
+  const addCustomExercise = () => {
+    const title = customExercise.trim();
+    if (!title) return;
+
+    setCustomExerciseLogs((prev) => [
+      {
+        id: `custom-${Date.now()}`,
+        title,
+        detail: "Logged by you",
+        completed: false,
+      },
+      ...prev,
+    ]);
+    setCustomExercise("");
+  };
+
+  const addGymTemplate = (label: string) => {
+    setCustomExerciseLogs((prev) => [
+      {
+        id: `gym-${label.toLowerCase()}-${Date.now()}`,
+        title: `Gym: ${label}`,
+        detail: "Strength training session logged.",
+        completed: false,
+      },
+      ...prev,
+    ]);
+  };
+
+  const toggleCustomExerciseCompleted = (taskId: string) => {
+    setCustomExerciseLogs((prev) =>
+      prev.map((task) => (task.id === taskId ? { ...task, completed: !task.completed } : task)),
+    );
+  };
+
   return (
     <AppLayout title="Health" subtitle="Monitor vitals, track symptoms, and get AI-backed recommendations.">
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
@@ -443,6 +562,12 @@ const Health = () => {
         ))}
       </section>
 
+      <section className="flex justify-end">
+        <Button type="button" className="h-10 rounded-xl bg-primary px-4 text-primary-foreground" onClick={() => navigate("/analysis")}>
+          Deep Analysis
+        </Button>
+      </section>
+
       <section className="glass-card rounded-3xl border-border/50 p-6">
         <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
           <div>
@@ -450,15 +575,23 @@ const Health = () => {
             <p className="text-sm text-muted-foreground">Download complete, weekly, or this month health data in PDF format.</p>
           </div>
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
-            <select
-              value={exportScope}
-              onChange={(event) => setExportScope(event.target.value as ExportScope)}
-              className="h-10 rounded-xl border border-border/60 bg-card px-3 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/25"
-            >
-              <option value="complete">Complete Health Data</option>
-              <option value="weekly">Weekly Health Data</option>
-              <option value="this_month">This Month Health Data</option>
-            </select>
+            <div className="inline-flex rounded-xl border border-border/60 bg-card/60 p-1">
+              {[
+                { key: "complete", label: "Complete" },
+                { key: "weekly", label: "Weekly" },
+                { key: "this_month", label: "This Month" },
+              ].map((option) => (
+                <Button
+                  key={option.key}
+                  type="button"
+                  variant={exportScope === option.key ? "default" : "ghost"}
+                  className="h-8 rounded-lg px-3 text-xs"
+                  onClick={() => setExportScope(option.key as ExportScope)}
+                >
+                  {option.label}
+                </Button>
+              ))}
+            </div>
             <Button
               type="button"
               className="h-10 rounded-xl bg-primary px-4 text-primary-foreground"
@@ -475,6 +608,27 @@ const Health = () => {
         )}
         {exportSuccess && (
           <div className="mt-4 rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm text-green-500">{exportSuccess}</div>
+        )}
+      </section>
+
+      <section className="glass-card rounded-3xl border-border/50 p-6">
+        <h2 className="mb-4 text-xl font-semibold">Food Analysis</h2>
+        {foodOverview?.latest_item ? (
+          <div className="rounded-2xl border border-border/60 bg-card/55 p-4 text-sm">
+            <p className="font-semibold">{foodOverview.latest_item}</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Alert {foodOverview.latest_alert ?? "N/A"} | Total confirmed {foodOverview.recent_choices ?? 0}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Green {foodOverview.alert_counts?.green ?? 0} | Yellow {foodOverview.alert_counts?.yellow ?? 0} | Red{" "}
+              {foodOverview.alert_counts?.red ?? 0}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">Detailed nutrition + history is available in Food &gt; History.</p>
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-dashed border-border/70 bg-card/45 p-4 text-sm text-muted-foreground">
+            No confirmed restaurant dishes yet. Confirm a dish in Food page to start food analysis tracking.
+          </div>
         )}
       </section>
 
@@ -543,6 +697,72 @@ const Health = () => {
         </motion.article>
       </section>
 
+      <section className="glass-card rounded-3xl border-border/50 p-6">
+        <h2 className="mb-4 flex items-center gap-2 text-xl font-semibold">
+          <Sparkles className="h-5 w-5 text-health-violet" />
+          Exercise Plan
+        </h2>
+        <div className="mb-4 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+          <input
+            value={customExercise}
+            onChange={(event) => setCustomExercise(event.target.value)}
+            placeholder="Add your own exercise log (e.g., 40 min cycling)"
+            className="h-10 rounded-xl border border-border/60 bg-card px-3 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/25"
+          />
+          <Button type="button" className="h-10 rounded-xl px-4 text-xs" onClick={addCustomExercise}>
+            <Plus className="h-3.5 w-3.5" />
+            Add
+          </Button>
+        </div>
+        <div className="mb-4 flex flex-wrap gap-2">
+          {["Chest", "Back", "Legs", "Shoulders", "Arms", "Core"].map((group) => (
+            <Button key={group} type="button" variant="outline" className="h-8 rounded-lg px-3 text-xs" onClick={() => addGymTemplate(group)}>
+              <Dumbbell className="h-3.5 w-3.5" />
+              {group}
+            </Button>
+          ))}
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {exercisePlan.map((task) => (
+            <div key={task.id} className="rounded-2xl border border-border/60 bg-card/55 p-4">
+              <p className="text-sm font-semibold">{task.title}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{task.detail}</p>
+              <div className="mt-3">
+                <Button
+                  type="button"
+                  variant={task.completed ? "outline" : "default"}
+                  className={`h-8 rounded-lg px-3 text-xs ${task.completed ? "border-emerald-500/40 text-emerald-600" : ""}`}
+                  onClick={() => toggleExerciseCompleted(task.id)}
+                >
+                  {task.completed ? "Completed" : "Complete"}
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+        {customExerciseLogs.length ? (
+          <div className="mt-4 space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Your exercise logs</p>
+            {customExerciseLogs.map((task) => (
+              <div key={task.id} className="flex items-center justify-between rounded-xl border border-border/60 bg-card/55 px-3 py-2">
+                <div>
+                  <p className="text-sm font-semibold">{task.title}</p>
+                  <p className="text-xs text-muted-foreground">{task.detail}</p>
+                </div>
+                <Button
+                  type="button"
+                  variant={task.completed ? "outline" : "default"}
+                  className={`h-8 rounded-lg px-3 text-xs ${task.completed ? "border-emerald-500/40 text-emerald-600" : ""}`}
+                  onClick={() => toggleCustomExerciseCompleted(task.id)}
+                >
+                  {task.completed ? "Completed" : "Complete"}
+                </Button>
+              </div>
+            ))}
+          </div>
+        ) : null}
+      </section>
+
       <motion.section
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
@@ -582,24 +802,6 @@ const Health = () => {
           </div>
         </div>
       </motion.section>
-
-      <section className="glass-card rounded-3xl border-border/50 p-6">
-        <h2 className="mb-4 flex items-center gap-2 text-xl font-semibold">
-          <Sparkles className="h-5 w-5 text-health-violet" />
-          AI Recommendations
-        </h2>
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {[
-            "Limit screen usage one hour before sleep for better recovery.",
-            "Your heart trend is stable. Continue current workout frequency.",
-            "Increase iron-rich food this week for better daytime energy.",
-          ].map((recommendation) => (
-            <div key={recommendation} className="rounded-2xl border border-border/60 bg-card/55 p-4 text-sm leading-relaxed text-muted-foreground">
-              {recommendation}
-            </div>
-          ))}
-        </div>
-      </section>
 
       <AnimatePresence>
         {selectedRisk ? (

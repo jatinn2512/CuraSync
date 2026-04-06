@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { Save, Target, User } from "lucide-react";
+import { Save, Target, TrendingUp, User } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/Button";
 import { useAuth } from "@/lib/authContext";
@@ -24,6 +25,7 @@ const toInputValue = (value: number | null | undefined): string => {
 };
 
 const Profile = () => {
+  const navigate = useNavigate();
   const { user, refreshUser } = useAuth();
 
   const [formData, setFormData] = useState<ProfileFormData>({
@@ -134,7 +136,7 @@ const Profile = () => {
   return (
     <AppLayout title="Profile" subtitle="Update personal details, manage goals, and configure preferences.">
       <section className="space-y-6">
-        <article className="glass-card rounded-3xl border-border/50 p-6">
+        <article className="glass-card rounded-3xl border-border/50 p-4 sm:p-6">
           <h2 className="mb-4 flex items-center gap-2 text-xl font-semibold">
             <User className="h-5 w-5 text-primary" />
             Personal Info
@@ -158,7 +160,7 @@ const Profile = () => {
               <input
                 value={formData.full_name}
                 onChange={(e) => handleInputChange("full_name", e.target.value)}
-                className="h-11 w-full rounded-xl border border-border/60 bg-card px-3 outline-none focus:ring-2 focus:ring-primary/25"
+                className="h-10 w-full rounded-xl border border-border/60 bg-card px-3 outline-none focus:ring-2 focus:ring-primary/25 sm:h-11"
               />
             </label>
 
@@ -167,7 +169,7 @@ const Profile = () => {
               <input
                 value={formData.email}
                 disabled
-                className="h-11 w-full rounded-xl border border-border/60 bg-card/50 px-3 outline-none opacity-60"
+                className="h-10 w-full rounded-xl border border-border/60 bg-card/50 px-3 outline-none opacity-60 sm:h-11"
               />
             </label>
 
@@ -176,7 +178,7 @@ const Profile = () => {
               <input
                 value={formData.phone}
                 onChange={(e) => handleInputChange("phone", e.target.value)}
-                className="h-11 w-full rounded-xl border border-border/60 bg-card px-3 outline-none focus:ring-2 focus:ring-primary/25"
+                className="h-10 w-full rounded-xl border border-border/60 bg-card px-3 outline-none focus:ring-2 focus:ring-primary/25 sm:h-11"
               />
             </label>
 
@@ -186,7 +188,7 @@ const Profile = () => {
                 type="number"
                 value={formData.age}
                 onChange={(e) => handleInputChange("age", e.target.value)}
-                className="h-11 w-full rounded-xl border border-border/60 bg-card px-3 outline-none focus:ring-2 focus:ring-primary/25"
+                className="h-10 w-full rounded-xl border border-border/60 bg-card px-3 outline-none focus:ring-2 focus:ring-primary/25 sm:h-11"
               />
             </label>
 
@@ -195,7 +197,7 @@ const Profile = () => {
               <select
                 value={formData.gender}
                 onChange={(e) => handleInputChange("gender", e.target.value)}
-                className="h-11 w-full rounded-xl border border-border/60 bg-card px-3 outline-none focus:ring-2 focus:ring-primary/25"
+                className="h-10 w-full appearance-none rounded-xl border border-border/60 bg-card px-3 outline-none focus:ring-2 focus:ring-primary/25 sm:h-11"
               >
                 <option value="">Select Gender</option>
                 <option value="Male">Male</option>
@@ -210,7 +212,7 @@ const Profile = () => {
                 type="number"
                 value={formData.height_cm}
                 onChange={(e) => handleInputChange("height_cm", e.target.value)}
-                className="h-11 w-full rounded-xl border border-border/60 bg-card px-3 outline-none focus:ring-2 focus:ring-primary/25"
+                className="h-10 w-full rounded-xl border border-border/60 bg-card px-3 outline-none focus:ring-2 focus:ring-primary/25 sm:h-11"
               />
             </label>
 
@@ -220,7 +222,7 @@ const Profile = () => {
                 type="number"
                 value={formData.weight_kg}
                 onChange={(e) => handleInputChange("weight_kg", e.target.value)}
-                className="h-11 w-full rounded-xl border border-border/60 bg-card px-3 outline-none focus:ring-2 focus:ring-primary/25"
+                className="h-10 w-full rounded-xl border border-border/60 bg-card px-3 outline-none focus:ring-2 focus:ring-primary/25 sm:h-11"
               />
             </label>
 
@@ -229,7 +231,7 @@ const Profile = () => {
               <select
                 value={formData.activity_level}
                 onChange={(e) => handleInputChange("activity_level", e.target.value)}
-                className="h-11 w-full rounded-xl border border-border/60 bg-card px-3 outline-none focus:ring-2 focus:ring-primary/25"
+                className="h-10 w-full appearance-none rounded-xl border border-border/60 bg-card px-3 outline-none focus:ring-2 focus:ring-primary/25 sm:h-11"
               >
                 <option value="sedentary">Sedentary</option>
                 <option value="light">Light</option>
@@ -251,17 +253,23 @@ const Profile = () => {
           </Button>
         </article>
 
-        <article className="glass-card rounded-3xl border-border/50 p-6">
-          <h2 className="mb-4 text-xl font-semibold">Health Summary</h2>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <article className="glass-card rounded-3xl border-border/50 p-4 sm:p-6">
+          <div className="mb-4 flex items-center justify-between gap-2">
+            <h2 className="text-xl font-semibold">Health Summary</h2>
+            <Button type="button" variant="outline" className="h-9 rounded-lg px-3 text-xs" onClick={() => navigate("/analysis")}>
+              <TrendingUp className="h-4 w-4" />
+              Deep Analysis
+            </Button>
+          </div>
+          <div className="grid grid-cols-3 gap-2 sm:gap-4">
             {[
               { label: "BMI", value: "24.1", status: "Normal" },
               { label: "Avg Sleep", value: "7.2h", status: "Good" },
               { label: "Activity", value: "High", status: "Excellent" },
             ].map((summary) => (
-              <div key={summary.label} className="rounded-2xl border border-border/60 bg-card/55 p-4 text-center">
-                <p className="text-2xl font-bold">{summary.value}</p>
-                <p className="text-xs text-muted-foreground">{summary.label}</p>
+              <div key={summary.label} className="rounded-2xl border border-border/60 bg-card/55 p-3 text-center">
+                <p className="text-xl font-bold sm:text-2xl">{summary.value}</p>
+                <p className="text-[11px] text-muted-foreground">{summary.label}</p>
                 <p className="mt-1 text-xs font-medium text-primary">{summary.status}</p>
               </div>
             ))}

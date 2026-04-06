@@ -1,3 +1,4 @@
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import {
   Activity,
@@ -32,11 +33,27 @@ const weeklyData = [
   { day: "Sun", steps: 3200 },
 ] as const;
 
-const insights = [
-  { text: "Your sleep quality improved 12% this week. Keep maintaining your bedtime routine.", type: "positive" },
-  { text: "Water intake is below target. Add two more glasses before evening.", type: "warning" },
-  { text: "Great consistency: you hit your step goal on 4 out of the last 7 days.", type: "positive" },
-] as const;
+const getTimeBasedInsights = (hour: number) => {
+  if (hour >= 5 && hour < 12) {
+    return [
+      { text: "Start with 20 minutes brisk walk and light stretching.", type: "positive" },
+      { text: "Hydration target: finish 2 glasses of water before noon.", type: "warning" },
+      { text: "Keep posture checks every 60 minutes while working.", type: "positive" },
+    ] as const;
+  }
+  if (hour >= 12 && hour < 18) {
+    return [
+      { text: "Try a 25 minute run or 30 minute fast walk this evening.", type: "positive" },
+      { text: "Take a 5 minute movement break every 2 hours.", type: "warning" },
+      { text: "Plan a 30 minute meditation session for stress reset.", type: "positive" },
+    ] as const;
+  }
+  return [
+    { text: "Do 30 minute meditation to improve recovery and sleep.", type: "positive" },
+    { text: "Light 15 minute stretch before bed for muscle recovery.", type: "warning" },
+    { text: "Avoid late heavy activity so sleep quality stays strong.", type: "positive" },
+  ] as const;
+};
 
 const quickActions = [
   { label: "Log Symptoms", icon: Stethoscope, path: "/health" },
@@ -45,14 +62,23 @@ const quickActions = [
 ] as const;
 
 const Dashboard = () => {
+  const [now, setNow] = useState<Date>(() => new Date());
   const navigate = useNavigate();
   const { user } = useAuth();
   const maxSteps = Math.max(...weeklyData.map((row) => row.steps));
   const resolvedName = user?.full_name || "User";
+  const insights = useMemo(() => getTimeBasedInsights(now.getHours()), [now]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setNow(new Date());
+    }, 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   return (
     <AppLayout title={`Welcome back, ${resolvedName}`} subtitle="Here's your health overview for today." centerHeader>
-      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="grid grid-cols-2 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
         {stats.map((stat, index) => (
           <motion.article
             key={stat.label}
@@ -81,37 +107,7 @@ const Dashboard = () => {
         ))}
       </section>
 
-      <section className="grid gap-6 lg:grid-cols-3">
-        <motion.article
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="glass-card rounded-3xl border-border/50 p-6 lg:col-span-2"
-        >
-          <div className="mb-5 flex items-center justify-between">
-            <h2 className="text-xl font-semibold">Weekly Activity</h2>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-health-teal/12 px-3 py-1 text-xs font-semibold text-health-teal">
-              <Activity className="h-3.5 w-3.5" />
-              Active Trend
-            </span>
-          </div>
-
-          <div className="h-56 rounded-2xl border border-border/60 bg-card/55 p-4">
-            <div className="flex h-full items-end gap-3">
-              {weeklyData.map((row) => (
-                <div key={row.day} className="flex h-full flex-1 flex-col justify-end">
-                  <motion.div
-                    initial={{ height: 0 }}
-                    animate={{ height: `${Math.round((row.steps / maxSteps) * 100)}%` }}
-                    transition={{ duration: 0.7 }}
-                    className="min-h-5 rounded-t-lg bg-health-teal/85"
-                  />
-                  <p className="mt-2 text-center text-[11px] font-medium text-muted-foreground">{row.day}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </motion.article>
-
+      <section className="grid gap-6 lg:grid-cols-2">
         <motion.article
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
@@ -137,6 +133,28 @@ const Dashboard = () => {
             ))}
           </div>
         </motion.article>
+
+        <motion.article
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="glass-card rounded-3xl border-border/50 p-6"
+        >
+          <h2 className="mb-4 flex items-center gap-2 text-xl font-semibold">
+            <Activity className="h-5 w-5 text-primary" />
+            Today Exercise
+          </h2>
+          <div className="space-y-2 text-sm text-muted-foreground">
+            {[
+              "30 min meditation for stress balance",
+              "20 min walk after dinner",
+              "15 min stretching before sleep",
+            ].map((item) => (
+              <div key={item} className="rounded-xl border border-border/60 bg-card/60 p-3">
+                {item}
+              </div>
+            ))}
+          </div>
+        </motion.article>
       </section>
 
       <section>
@@ -157,6 +175,36 @@ const Dashboard = () => {
           ))}
         </div>
       </section>
+
+      <motion.article
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="glass-card rounded-3xl border-border/50 p-6"
+      >
+        <div className="mb-5 flex items-center justify-between">
+          <h2 className="text-xl font-semibold">Weekly Activity</h2>
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-health-teal/12 px-3 py-1 text-xs font-semibold text-health-teal">
+            <Activity className="h-3.5 w-3.5" />
+            Active Trend
+          </span>
+        </div>
+
+        <div className="h-56 rounded-2xl border border-border/60 bg-card/55 p-4">
+          <div className="flex h-full items-end gap-3">
+            {weeklyData.map((row) => (
+              <div key={row.day} className="flex h-full flex-1 flex-col justify-end">
+                <motion.div
+                  initial={{ height: 0 }}
+                  animate={{ height: `${Math.round((row.steps / maxSteps) * 100)}%` }}
+                  transition={{ duration: 0.7 }}
+                  className="min-h-5 rounded-t-lg bg-health-teal/85"
+                />
+                <p className="mt-2 text-center text-[11px] font-medium text-muted-foreground">{row.day}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </motion.article>
     </AppLayout>
   );
 };
