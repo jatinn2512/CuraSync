@@ -24,7 +24,8 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/Button";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import heroImg from "@/assets/hero-health-ai.png";
+
+const heroImg = "/assets/hero-health-ai.png";
 
 const features = [
   {

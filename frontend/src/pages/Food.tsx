@@ -18,6 +18,7 @@ import {
 import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/Button";
 import { apiClient } from "@/lib/apiClient";
+import { pushNotification } from "@/lib/notifications";
 
 const macros = [
   { label: "Calories", value: 1845, target: 2200, unit: "kcal", icon: Flame, color: "text-health-rose", bg: "bg-health-rose/12" },
@@ -250,16 +251,23 @@ const Food = () => {
   const addMeal = () => {
     if (!newMeal.items.trim()) return;
 
+    const mealLabel = newMeal.type;
+    const mealItems = newMeal.items.trim();
     const loggedAt = new Date().toISOString();
     setMeals((prev) => [
       {
-        type: newMeal.type,
-        items: newMeal.items.trim(),
+        type: mealLabel,
+        items: mealItems,
         calories: Number.parseInt(newMeal.calories, 10) || 0,
         loggedAt,
       },
       ...prev,
     ]);
+    pushNotification({
+      type: "food",
+      title: "Food logged",
+      message: `You logged ${mealItems} in ${mealLabel}.`,
+    });
 
     setNewMeal({ type: getDefaultMealType(new Date().getHours()), items: "", calories: "" });
     setShowAdd(false);
@@ -531,6 +539,11 @@ const Food = () => {
       setChooseResult({ alert: response.data.alert, message: response.data.message, dishId: response.data.dish_id });
       setSelectedDishId(response.data.dish_id);
       setPendingChoice(null);
+      pushNotification({
+        type: "food",
+        title: "Food choice saved",
+        message: `You chose ${response.data.dish_name} from ${response.data.restaurant_name}.`,
+      });
       if (showHistory) {
         void loadHistory();
       }
