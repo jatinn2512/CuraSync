@@ -2,47 +2,53 @@ import { motion } from "framer-motion";
 import { CloudRain, Droplets, MapPin, ShieldAlert, Thermometer, Wind } from "lucide-react";
 import AppLayout from "@/components/AppLayout";
 
-const aqiValue = 68;
+const aqiValue = 218;
 
 const getAqiStatus = (value: number) => {
-  if (value <= 50) return { label: "Good", color: "text-health-teal", bg: "bg-health-teal/12", desc: "Air quality is satisfactory." };
-  if (value <= 100) return { label: "Moderate", color: "text-yellow-500", bg: "bg-yellow-500/12", desc: "Air quality is acceptable." };
-  if (value <= 150) {
-    return { label: "Unhealthy (Sensitive)", color: "text-orange-500", bg: "bg-orange-500/12", desc: "Sensitive groups may experience mild effects." };
+  if (value <= 50) return { label: "Good", color: "text-emerald-600", bg: "bg-emerald-500/12", desc: "Minimal impact. Outdoor activity is safe." };
+  if (value <= 100) return { label: "Satisfactory", color: "text-yellow-600", bg: "bg-yellow-500/12", desc: "Minor discomfort for sensitive people." };
+  if (value <= 200) {
+    return { label: "Moderate", color: "text-orange-600", bg: "bg-orange-500/12", desc: "Breathing discomfort possible in sensitive groups." };
   }
-  return { label: "Unhealthy", color: "text-health-rose", bg: "bg-health-rose/12", desc: "Everyone may begin to experience effects." };
+  if (value <= 300) {
+    return { label: "Poor", color: "text-red-600", bg: "bg-red-500/12", desc: "Reduce outdoor exertion and use mask outdoors." };
+  }
+  if (value <= 400) {
+    return { label: "Very Poor", color: "text-fuchsia-700", bg: "bg-fuchsia-500/12", desc: "Avoid prolonged outdoor exposure." };
+  }
+  return { label: "Severe", color: "text-purple-700", bg: "bg-purple-500/12", desc: "Serious health impact possible for everyone." };
 };
 
 const pollutants = [
-  { name: "PM2.5", value: "18 ug/m3", status: "Good", icon: Droplets, color: "text-health-teal" },
-  { name: "PM10", value: "42 ug/m3", status: "Moderate", icon: Wind, color: "text-yellow-500" },
-  { name: "CO", value: "0.6 mg/m3", status: "Good", icon: CloudRain, color: "text-health-cyan" },
-  { name: "NO2", value: "28 ppb", status: "Moderate", icon: Thermometer, color: "text-orange-500" },
+  { name: "PM2.5", value: "128 ug/m3", status: "Poor", icon: Droplets, color: "text-red-600" },
+  { name: "PM10", value: "236 ug/m3", status: "Poor", icon: Wind, color: "text-red-600" },
+  { name: "CO", value: "1.2 mg/m3", status: "Moderate", icon: CloudRain, color: "text-orange-600" },
+  { name: "NO2", value: "58 ppb", status: "Moderate", icon: Thermometer, color: "text-orange-600" },
 ] as const;
 
 const recommendations = [
-  "Air quality is moderate. Outdoor exercise is fine for most people.",
-  "Wear a mask outdoors if you have respiratory sensitivity.",
-  "Keep windows open during cleaner morning hours for fresh airflow.",
-  "Stay hydrated to help your body cope with mild pollutants.",
+  "Prefer indoor workout today in Delhi NCR.",
+  "Use N95 mask during commute and outdoor exposure.",
+  "Keep windows closed in peak traffic hours (8 AM-12 PM, 6 PM-10 PM).",
+  "Use air purifier in bedroom at night if available.",
 ] as const;
 
 const hourlyTrend = [
-  { hour: "6AM", value: 44 },
-  { hour: "9AM", value: 58 },
-  { hour: "12PM", value: 72 },
-  { hour: "3PM", value: 81 },
-  { hour: "6PM", value: 66 },
-  { hour: "9PM", value: 53 },
+  { hour: "6AM", value: 178 },
+  { hour: "9AM", value: 224 },
+  { hour: "12PM", value: 248 },
+  { hour: "3PM", value: 236 },
+  { hour: "6PM", value: 215 },
+  { hour: "9PM", value: 202 },
 ] as const;
 
 const Aqi = () => {
   const status = getAqiStatus(aqiValue);
-  const markerLeftPercent = Math.min((aqiValue / 300) * 100, 100);
+  const markerLeftPercent = Math.min((aqiValue / 500) * 100, 100);
   const hourlyMax = Math.max(...hourlyTrend.map((item) => item.value));
 
   return (
-    <AppLayout title="AQI" subtitle="Live air quality monitoring with city-level insights and health guidance.">
+    <AppLayout title="AQI" subtitle="Delhi NCR focused AQI monitoring with India-standard categories and guidance.">
       <section className="glass-card overflow-hidden rounded-3xl border-border/50 p-6 lg:p-8">
         <div className="flex flex-col gap-8 lg:flex-row lg:items-center">
           <div className="flex flex-col items-center text-center">
@@ -59,29 +65,33 @@ const Aqi = () => {
           <div className="flex-1">
             <div className="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
               <MapPin className="h-4 w-4" />
-              San Francisco, CA
+              Delhi NCR - Anand Vihar
             </div>
 
             <div className="relative overflow-hidden rounded-full border border-border/60">
               <div className="flex h-4">
-                <div className="w-1/4 bg-green-400/85" />
-                <div className="w-1/4 bg-yellow-400/85" />
-                <div className="w-1/4 bg-orange-400/85" />
-                <div className="w-1/4 bg-red-500/85" />
+                <div className="w-1/6 bg-emerald-400/85" />
+                <div className="w-1/6 bg-yellow-400/85" />
+                <div className="w-1/6 bg-orange-400/85" />
+                <div className="w-1/6 bg-red-500/85" />
+                <div className="w-1/6 bg-fuchsia-500/85" />
+                <div className="w-1/6 bg-purple-500/85" />
               </div>
               <div className="absolute top-1/2 h-4 w-4 -translate-y-1/2 rounded-full border-2 border-background bg-foreground shadow" style={{ left: `calc(${markerLeftPercent}% - 8px)` }} />
             </div>
 
             <div className="mt-1 flex justify-between text-[11px] text-muted-foreground">
               <span>Good</span>
+              <span>Satisfactory</span>
               <span>Moderate</span>
-              <span>Unhealthy</span>
-              <span>Hazardous</span>
+              <span>Poor</span>
+              <span>V.Poor</span>
+              <span>Severe</span>
             </div>
 
             <div className="mt-6 flex h-32 items-center justify-center rounded-2xl border border-border/60 bg-card/55 text-sm text-muted-foreground">
               <MapPin className="mr-2 h-4 w-4" />
-              Map view placeholder for live AQI API
+              Local hotspot summary: Anand Vihar, Noida Sec-62, Gurgaon Sector-51
             </div>
           </div>
         </div>
