@@ -2,8 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { Activity, Eye, EyeOff, Lock, Mail, X } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/Button";
-import heroImg from "@/assets/hero-health-ai.png";
 import { useAuth } from "@/lib/authContext";
+
+const heroImg = "/assets/hero-health-ai.png";
 
 const Login = () => {
   const navigate = useNavigate();

@@ -2,8 +2,9 @@ import { useEffect, useState } from "react";
 import { Activity, Eye, EyeOff, Lock, Mail, UserRound, X } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/Button";
-import heroImg from "@/assets/hero-health-ai.png";
 import { useAuth } from "@/lib/authContext";
+
+const heroImg = "/assets/hero-health-ai.png";
 
 const Register = () => {
   const navigate = useNavigate();
