@@ -30,7 +30,9 @@ const Analysis = () => {
   const rows = chartSeries[range];
 
   const chartKey: keyof (typeof rows)[number] = tab === "overall" ? "overall" : tab;
+  const comparisonKey: keyof (typeof rows)[number] = tab === "overall" ? "health" : "overall";
   const maxValue = Math.max(...rows.map((row) => row[chartKey]), 1);
+  const comparisonMaxValue = Math.max(...rows.map((row) => row[comparisonKey]), 1);
 
   const summaryCards = useMemo(
     () => [
@@ -97,24 +99,48 @@ const Analysis = () => {
         ))}
       </section>
 
-      <section className="glass-card rounded-3xl border-border/50 p-5 sm:p-6">
-        <h2 className="mb-4 flex items-center gap-2 text-xl font-semibold">
-          <Flame className="h-5 w-5 text-primary" />
-          {tab[0].toUpperCase() + tab.slice(1)} Trend
-        </h2>
-        <div className="rounded-2xl border border-border/60 bg-card/55 p-4">
-          <div className="flex h-64 items-end gap-2 sm:gap-3">
-            {rows.map((row) => (
-              <div key={row.label} className="flex h-full flex-1 flex-col justify-end">
-                <div
-                  className="min-h-5 rounded-t-lg bg-primary/85"
-                  style={{ height: `${Math.round((row[chartKey] / maxValue) * 100)}%` }}
-                />
-                <p className="mt-2 text-center text-[11px] font-medium text-muted-foreground">{row.label}</p>
-              </div>
-            ))}
+      <section className="grid gap-4 xl:grid-cols-2">
+        <article className="glass-card rounded-3xl border-border/50 p-5">
+          <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold">
+            <Flame className="h-5 w-5 text-primary" />
+            {tab[0].toUpperCase() + tab.slice(1)} Trend
+          </h2>
+          <div className="rounded-2xl border border-border/60 bg-card/55 p-4">
+            <div className="flex h-44 items-end gap-2 sm:gap-3">
+              {rows.map((row) => (
+                <div key={row.label} className="flex h-full flex-1 flex-col justify-end">
+                  <div
+                    className="min-h-3 rounded-t-md bg-primary/85"
+                    style={{ height: `${Math.round((row[chartKey] / maxValue) * 100)}%` }}
+                  />
+                  <p className="mt-1 text-center text-[11px] font-medium text-muted-foreground">{row.label}</p>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+        </article>
+
+        <article className="glass-card rounded-3xl border-border/50 p-5">
+          <h2 className="mb-3 text-lg font-semibold">Comparison with {comparisonKey === "overall" ? "Overall" : "Health"}</h2>
+          <div className="rounded-2xl border border-border/60 bg-card/55 p-4">
+            <div className="space-y-2">
+              {rows.map((row) => (
+                <div key={`cmp-${row.label}`}>
+                  <div className="mb-1 flex items-center justify-between text-[11px] text-muted-foreground">
+                    <span>{row.label}</span>
+                    <span>{row[comparisonKey]}</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-muted">
+                    <div
+                      className="h-2 rounded-full bg-health-cyan/85"
+                      style={{ width: `${Math.round((row[comparisonKey] / comparisonMaxValue) * 100)}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </article>
       </section>
     </AppLayout>
   );
