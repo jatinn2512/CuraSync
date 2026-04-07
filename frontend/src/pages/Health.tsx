@@ -12,26 +12,164 @@ import {
   HeartPulse,
   Moon,
   Plus,
-  Send,
   Sparkles,
   Stethoscope,
   Wind,
   X,
   XCircle,
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/Button";
 import { getAccessToken, getApiBaseUrl } from "@/lib/auth";
 import { apiClient } from "@/lib/apiClient";
+import { pushNotification } from "@/lib/notifications";
 
-const trendData = [
-  { date: "Mon", heartRate: 72, steps: 6200 },
-  { date: "Tue", heartRate: 75, steps: 8400 },
-  { date: "Wed", heartRate: 70, steps: 7100 },
-  { date: "Thu", heartRate: 68, steps: 9200 },
-  { date: "Fri", heartRate: 72, steps: 8432 },
-] as const;
+type TrendRange = "weekly" | "monthly";
+
+const trendSeries = {
+  weekly: [
+    { label: "Mon", heartRate: 72, steps: 6200 },
+    { label: "Tue", heartRate: 75, steps: 8400 },
+    { label: "Wed", heartRate: 70, steps: 7100 },
+    { label: "Thu", heartRate: 68, steps: 9200 },
+    { label: "Fri", heartRate: 72, steps: 8432 },
+    { label: "Sat", heartRate: 71, steps: 7800 },
+    { label: "Sun", heartRate: 69, steps: 8900 },
+  ],
+  monthly: [
+    { label: "W1", heartRate: 74, steps: 46800 },
+    { label: "W2", heartRate: 72, steps: 50200 },
+    { label: "W3", heartRate: 70, steps: 52600 },
+    { label: "W4", heartRate: 69, steps: 54800 },
+  ],
+} as const;
+
+type SymptomIntensity = "mild" | "moderate" | "severe";
+
+type SymptomPreset = {
+  id: string;
+  label: string;
+  followupQuestion: string;
+  intensityOptions: { id: SymptomIntensity; label: string }[];
+  suggestions: Record<SymptomIntensity, string[]>;
+};
+
+const symptomPresets: SymptomPreset[] = [
+  {
+    id: "headache",
+    label: "Headache",
+    followupQuestion: "What type of headache is it?",
+    intensityOptions: [
+      { id: "mild", label: "Mild / slow pain" },
+      { id: "moderate", label: "Throbbing pain" },
+      { id: "severe", label: "Sharp severe pain" },
+    ],
+    suggestions: {
+      mild: ["Drink water slowly.", "Take screen breaks for 10-15 min.", "Rest in a quiet room."],
+      moderate: ["Hydrate and avoid loud noise.", "Use cold compress for 10 min.", "Avoid skipping meals."],
+      severe: [
+        "Stop heavy activity and rest now.",
+        "Stay hydrated and avoid bright screens.",
+        "Consult a doctor quickly if pain is sudden or worst-ever.",
+      ],
+    },
+  },
+  {
+    id: "vomiting",
+    label: "Vomiting",
+    followupQuestion: "How frequent is vomiting right now?",
+    intensityOptions: [
+      { id: "mild", label: "1 time only" },
+      { id: "moderate", label: "2-3 times" },
+      { id: "severe", label: "Frequent / cannot hold fluids" },
+    ],
+    suggestions: {
+      mild: ["Take small sips of water.", "Avoid oily food for now.", "Rest your stomach for 1-2 hours."],
+      moderate: ["Use ORS or electrolyte water.", "Eat light foods like banana/toast.", "Monitor signs of dehydration."],
+      severe: [
+        "Start ORS immediately in small frequent sips.",
+        "Avoid exercise and heavy food.",
+        "Seek medical care if vomiting continues more than 6-8 hours.",
+      ],
+    },
+  },
+  {
+    id: "dizziness",
+    label: "Dizziness",
+    followupQuestion: "How strong is the dizziness?",
+    intensityOptions: [
+      { id: "mild", label: "Light / brief" },
+      { id: "moderate", label: "On standing or walking" },
+      { id: "severe", label: "Heavy spinning / near-faint" },
+    ],
+    suggestions: {
+      mild: ["Sit down and breathe deeply.", "Drink water and avoid sudden movement.", "Have a light snack if hungry."],
+      moderate: ["Lie down for 10-15 minutes.", "Avoid driving for now.", "Check BP if possible."],
+      severe: [
+        "Sit or lie down immediately.",
+        "Do not walk alone right now.",
+        "Get urgent medical help if chest pain, fainting, or confusion is present.",
+      ],
+    },
+  },
+  {
+    id: "fever",
+    label: "Fever",
+    followupQuestion: "How high does your fever feel?",
+    intensityOptions: [
+      { id: "mild", label: "Low-grade (feels warm)" },
+      { id: "moderate", label: "Moderate with body ache" },
+      { id: "severe", label: "High fever / chills" },
+    ],
+    suggestions: {
+      mild: ["Drink warm water regularly.", "Take adequate rest.", "Track temperature every few hours."],
+      moderate: ["Use light meals and stay hydrated.", "Avoid strenuous workout.", "Keep room ventilation good."],
+      severe: [
+        "Rest completely and hydrate aggressively.",
+        "Use a cool sponge if body feels too hot.",
+        "Consult a doctor the same day, especially if fever is persistent.",
+      ],
+    },
+  },
+  {
+    id: "cough",
+    label: "Cough",
+    followupQuestion: "How uncomfortable is your cough?",
+    intensityOptions: [
+      { id: "mild", label: "Occasional dry cough" },
+      { id: "moderate", label: "Frequent cough" },
+      { id: "severe", label: "Persistent with breath trouble" },
+    ],
+    suggestions: {
+      mild: ["Drink warm fluids.", "Avoid cold drinks and smoke.", "Use steam inhalation once daily."],
+      moderate: ["Take steam inhalation 2-3 times.", "Avoid outdoor pollution exposure.", "Sleep with head slightly elevated."],
+      severe: [
+        "Avoid heavy activity immediately.",
+        "Use a mask outdoors.",
+        "Seek medical care if breathlessness or chest pain is present.",
+      ],
+    },
+  },
+  {
+    id: "stomach_pain",
+    label: "Stomach Pain",
+    followupQuestion: "What is the pain intensity?",
+    intensityOptions: [
+      { id: "mild", label: "Mild cramps" },
+      { id: "moderate", label: "On and off moderate pain" },
+      { id: "severe", label: "Sharp severe pain" },
+    ],
+    suggestions: {
+      mild: ["Drink warm water.", "Eat bland food.", "Avoid spicy/oily meals for now."],
+      moderate: ["Take rest and avoid heavy workout.", "Use small light meals.", "Monitor if pain shifts or worsens."],
+      severe: [
+        "Avoid self-medication in strong pain.",
+        "Do not delay medical review.",
+        "Go to emergency if severe pain is sudden or with vomiting/fever.",
+      ],
+    },
+  },
+];
 
 const metrics = [
   { label: "Heart Rate", value: "72 bpm", icon: HeartPulse, color: "text-health-rose", bg: "bg-health-rose/12" },
@@ -54,16 +192,44 @@ type ConditionRisk = {
   recommendations: string[];
 };
 
-type ChatMessage = {
-  role: "ai" | "user";
-  text: string;
-};
-
 type ExerciseTask = {
   id: string;
   title: string;
   detail: string;
   completed: boolean;
+};
+
+const gymTemplates: Record<string, ExerciseTask[]> = {
+  Chest: [
+    { id: "chest-bench", title: "Bench Press - 4 sets", detail: "Heavy push movement.", completed: false },
+    { id: "chest-incline", title: "Incline Dumbbell Press - 3 sets", detail: "Upper chest focus.", completed: false },
+    { id: "chest-fly", title: "Cable Fly - 3 sets", detail: "Controlled chest isolation.", completed: false },
+  ],
+  Back: [
+    { id: "back-row", title: "Barbell Row - 4 sets", detail: "Mid-back and lats.", completed: false },
+    { id: "back-lat", title: "Lat Pulldown - 3 sets", detail: "Vertical pulling volume.", completed: false },
+    { id: "back-facepull", title: "Face Pull - 3 sets", detail: "Rear delt + posture.", completed: false },
+  ],
+  Legs: [
+    { id: "legs-squat", title: "Barbell Squat - 4 sets", detail: "Primary strength lift.", completed: false },
+    { id: "legs-rdl", title: "Romanian Deadlift - 3 sets", detail: "Hamstring focus.", completed: false },
+    { id: "legs-lunge", title: "Walking Lunge - 3 sets", detail: "Single-leg volume.", completed: false },
+  ],
+  Shoulders: [
+    { id: "shoulder-press", title: "Overhead Press - 4 sets", detail: "Primary shoulder compound.", completed: false },
+    { id: "shoulder-lateral", title: "Lateral Raise - 4 sets", detail: "Side delt isolation.", completed: false },
+    { id: "shoulder-rear", title: "Rear Delt Fly - 3 sets", detail: "Rear delt stability.", completed: false },
+  ],
+  Arms: [
+    { id: "arms-curl", title: "Barbell Curl - 4 sets", detail: "Biceps strength.", completed: false },
+    { id: "arms-pushdown", title: "Triceps Pushdown - 4 sets", detail: "Triceps volume.", completed: false },
+    { id: "arms-hammer", title: "Hammer Curl - 3 sets", detail: "Brachialis focus.", completed: false },
+  ],
+  Core: [
+    { id: "core-plank", title: "Plank - 3 rounds", detail: "Core bracing.", completed: false },
+    { id: "core-raise", title: "Leg Raise - 3 sets", detail: "Lower abs control.", completed: false },
+    { id: "core-twist", title: "Russian Twist - 3 sets", detail: "Oblique rotation.", completed: false },
+  ],
 };
 
 type ExportScope = "complete" | "weekly" | "this_month";
@@ -330,9 +496,10 @@ const buildExercisePlan = (hour: number): ExerciseTask[] => {
 };
 
 const Health = () => {
-  const navigate = useNavigate();
   const [planHour, setPlanHour] = useState<number>(() => new Date().getHours());
-  const [symptom, setSymptom] = useState("");
+  const [trendRange, setTrendRange] = useState<TrendRange>("weekly");
+  const [selectedSymptomId, setSelectedSymptomId] = useState<string | null>(null);
+  const [selectedIntensity, setSelectedIntensity] = useState<SymptomIntensity | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [exportError, setExportError] = useState("");
   const [exportSuccess, setExportSuccess] = useState("");
@@ -342,21 +509,20 @@ const Health = () => {
   const [isRiskLoading, setIsRiskLoading] = useState(true);
   const [riskOverview, setRiskOverview] = useState<RiskOverview | null>(null);
   const [exercisePlan, setExercisePlan] = useState<ExerciseTask[]>(() => buildExercisePlan(new Date().getHours()));
+  const [exerciseMode, setExerciseMode] = useState<"home" | "gym">("home");
+  const [selectedGymGroup, setSelectedGymGroup] = useState<keyof typeof gymTemplates>("Chest");
   const [customExercise, setCustomExercise] = useState("");
   const [customExerciseLogs, setCustomExerciseLogs] = useState<ExerciseTask[]>([]);
+  const [pendingReminderSent, setPendingReminderSent] = useState(false);
   const [selectedRiskId, setSelectedRiskId] = useState<string | null>(null);
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      role: "ai",
-      text: "Hi, I am your AI health assistant. Describe your symptoms and I will share initial guidance. This is not a substitute for medical diagnosis.",
-    },
-  ]);
 
   const selectedRisk = conditionRisks.find((risk) => risk.id === selectedRiskId) ?? null;
+  const selectedSymptom = symptomPresets.find((symptom) => symptom.id === selectedSymptomId) ?? null;
   const foodOverview = riskOverview?.food ?? null;
+  const trendRows = trendSeries[trendRange];
 
-  const maxHeartRate = Math.max(...trendData.map((point) => point.heartRate));
-  const maxSteps = Math.max(...trendData.map((point) => point.steps));
+  const maxHeartRate = Math.max(...trendRows.map((point) => point.heartRate), 1);
+  const maxSteps = Math.max(...trendRows.map((point) => point.steps), 1);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -367,8 +533,13 @@ const Health = () => {
   }, []);
 
   useEffect(() => {
-    setExercisePlan(buildExercisePlan(planHour));
-  }, [planHour]);
+    if (exerciseMode === "gym") {
+      setExercisePlan(gymTemplates[selectedGymGroup].map((task) => ({ ...task })));
+    } else {
+      setExercisePlan(buildExercisePlan(planHour));
+    }
+    setPendingReminderSent(false);
+  }, [exerciseMode, planHour, selectedGymGroup]);
 
   useEffect(() => {
     let cancelled = false;
@@ -419,6 +590,18 @@ const Health = () => {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (pendingReminderSent) return;
+    const pendingCount = exercisePlan.filter((task) => !task.completed).length;
+    if (!pendingCount) return;
+    pushNotification({
+      type: "reminder",
+      title: "Exercise pending",
+      message: `${pendingCount} exercise task${pendingCount > 1 ? "s are" : " is"} pending.`,
+    });
+    setPendingReminderSent(true);
+  }, [exercisePlan, pendingReminderSent]);
 
   const handleExportPdf = async () => {
     setExportError("");
@@ -483,25 +666,31 @@ const Health = () => {
     }
   };
 
-  const handleSubmit = () => {
-    if (!symptom.trim()) return;
-
-    const userText = symptom.trim();
-    setMessages((prev) => [
-      ...prev,
-      { role: "user", text: userText },
-      {
-        role: "ai",
-        text: `Based on "${userText}", monitor symptoms for 24-48 hours, maintain hydration, and rest well. Consult a healthcare professional if symptoms persist or worsen.`,
-      },
-    ]);
-    setSymptom("");
+  const handleSymptomSelect = (symptomId: string) => {
+    setSelectedSymptomId(symptomId);
+    setSelectedIntensity(null);
   };
 
-  const toggleExerciseCompleted = (taskId: string) => {
+  const handleIntensitySelect = (intensity: SymptomIntensity) => {
+    setSelectedIntensity(intensity);
+  };
+
+  const markExerciseCompleted = (taskId: string) => {
+    let completedTaskTitle = "";
     setExercisePlan((prev) =>
-      prev.map((task) => (task.id === taskId ? { ...task, completed: !task.completed } : task)),
+      prev.map((task) => {
+        if (task.id !== taskId || task.completed) return task;
+        completedTaskTitle = task.title;
+        return { ...task, completed: true };
+      }),
     );
+    if (completedTaskTitle) {
+      pushNotification({
+        type: "exercise",
+        title: "Exercise completed",
+        message: `You completed ${completedTaskTitle}.`,
+      });
+    }
   };
 
   const addCustomExercise = () => {
@@ -517,25 +706,30 @@ const Health = () => {
       },
       ...prev,
     ]);
+    pushNotification({
+      type: "exercise",
+      title: "Exercise added",
+      message: `${title} added to your exercise logs.`,
+    });
     setCustomExercise("");
   };
 
-  const addGymTemplate = (label: string) => {
-    setCustomExerciseLogs((prev) => [
-      {
-        id: `gym-${label.toLowerCase()}-${Date.now()}`,
-        title: `Gym: ${label}`,
-        detail: "Strength training session logged.",
-        completed: false,
-      },
-      ...prev,
-    ]);
-  };
-
-  const toggleCustomExerciseCompleted = (taskId: string) => {
+  const markCustomExerciseCompleted = (taskId: string) => {
+    let completedTaskTitle = "";
     setCustomExerciseLogs((prev) =>
-      prev.map((task) => (task.id === taskId ? { ...task, completed: !task.completed } : task)),
+      prev.map((task) => {
+        if (task.id !== taskId || task.completed) return task;
+        completedTaskTitle = task.title;
+        return { ...task, completed: true };
+      }),
     );
+    if (completedTaskTitle) {
+      pushNotification({
+        type: "exercise",
+        title: "Exercise completed",
+        message: `You completed ${completedTaskTitle}.`,
+      });
+    }
   };
 
   return (
@@ -560,12 +754,6 @@ const Health = () => {
             </div>
           </motion.article>
         ))}
-      </section>
-
-      <section className="flex justify-end">
-        <Button type="button" className="h-10 rounded-xl bg-primary px-4 text-primary-foreground" onClick={() => navigate("/analysis")}>
-          Deep Analysis
-        </Button>
       </section>
 
       <section className="glass-card rounded-3xl border-border/50 p-6">
@@ -614,16 +802,23 @@ const Health = () => {
       <section className="glass-card rounded-3xl border-border/50 p-6">
         <h2 className="mb-4 text-xl font-semibold">Food Analysis</h2>
         {foodOverview?.latest_item ? (
-          <div className="rounded-2xl border border-border/60 bg-card/55 p-4 text-sm">
-            <p className="font-semibold">{foodOverview.latest_item}</p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Alert {foodOverview.latest_alert ?? "N/A"} | Total confirmed {foodOverview.recent_choices ?? 0}
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">
+          <div className="grid gap-3 rounded-2xl border border-border/60 bg-card/55 p-4 text-sm md:grid-cols-4">
+            <div className="md:col-span-2">
+              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Latest item</p>
+              <p className="font-semibold">{foodOverview.latest_item}</p>
+            </div>
+            <div>
+              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Alert</p>
+              <p className="font-semibold">{foodOverview.latest_alert ?? "N/A"}</p>
+            </div>
+            <div>
+              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Confirmed</p>
+              <p className="font-semibold">{foodOverview.recent_choices ?? 0}</p>
+            </div>
+            <p className="md:col-span-4 text-xs text-muted-foreground">
               Green {foodOverview.alert_counts?.green ?? 0} | Yellow {foodOverview.alert_counts?.yellow ?? 0} | Red{" "}
-              {foodOverview.alert_counts?.red ?? 0}
+              {foodOverview.alert_counts?.red ?? 0} | Full detail in Food &gt; History.
             </p>
-            <p className="mt-1 text-xs text-muted-foreground">Detailed nutrition + history is available in Food &gt; History.</p>
           </div>
         ) : (
           <div className="rounded-2xl border border-dashed border-border/70 bg-card/45 p-4 text-sm text-muted-foreground">
@@ -665,34 +860,60 @@ const Health = () => {
             Symptom Checker
           </h2>
 
-          <div className="mb-4 h-60 space-y-3 overflow-y-auto rounded-2xl border border-border/60 bg-card/45 p-3 sm:h-72">
-            {messages.map((message, index) => (
-              <motion.div
-                key={`${message.role}-${index}`}
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                className={`rounded-2xl p-3 text-sm leading-relaxed ${
-                  message.role === "ai" ? "bg-muted text-foreground" : "ml-8 bg-primary text-primary-foreground"
-                }`}
-              >
-                {message.text}
-              </motion.div>
-            ))}
-          </div>
+          <div className="space-y-4 rounded-2xl border border-border/60 bg-card/45 p-4">
+            <div>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Select symptom</p>
+              <div className="flex flex-wrap gap-2">
+                {symptomPresets.map((symptom) => (
+                  <Button
+                    key={symptom.id}
+                    type="button"
+                    variant={selectedSymptomId === symptom.id ? "default" : "outline"}
+                    className="h-8 rounded-lg px-3 text-xs"
+                    onClick={() => handleSymptomSelect(symptom.id)}
+                  >
+                    {symptom.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
 
-          <div className="flex gap-2">
-            <input
-              value={symptom}
-              onChange={(event) => setSymptom(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") handleSubmit();
-              }}
-              placeholder="Describe your symptoms"
-              className="h-11 flex-1 rounded-xl border border-border/60 bg-card px-3 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/25"
-            />
-            <Button type="button" size="icon" className="h-11 w-11 rounded-xl bg-primary text-primary-foreground" onClick={handleSubmit}>
-              <Send className="h-4 w-4" />
-            </Button>
+            {selectedSymptom ? (
+              <div>
+                <p className="mb-2 text-sm font-semibold">{selectedSymptom.followupQuestion}</p>
+                <div className="flex flex-wrap gap-2">
+                  {selectedSymptom.intensityOptions.map((option) => (
+                    <Button
+                      key={option.id}
+                      type="button"
+                      variant={selectedIntensity === option.id ? "default" : "outline"}
+                      className="h-8 rounded-lg px-3 text-xs"
+                      onClick={() => handleIntensitySelect(option.id)}
+                    >
+                      {option.label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            {selectedSymptom && selectedIntensity ? (
+              <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 p-3">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-emerald-700">Suggestions</p>
+                <ul className="space-y-1 text-sm text-emerald-800">
+                  {selectedSymptom.suggestions[selectedIntensity].map((tip) => (
+                    <li key={tip} className="flex gap-2">
+                      <span>•</span>
+                      <span>{tip}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Pick a symptom and intensity to get quick guidance like rest, hydration, and activity advice.
+              </p>
+            )}
           </div>
         </motion.article>
       </section>
@@ -702,6 +923,42 @@ const Health = () => {
           <Sparkles className="h-5 w-5 text-health-violet" />
           Exercise Plan
         </h2>
+        <div className="mb-4 inline-flex rounded-xl border border-border/60 bg-card/60 p-1">
+          <Button
+            type="button"
+            variant={exerciseMode === "home" ? "default" : "ghost"}
+            className="h-8 rounded-lg px-3 text-xs"
+            onClick={() => setExerciseMode("home")}
+          >
+            Home
+          </Button>
+          <Button
+            type="button"
+            variant={exerciseMode === "gym" ? "default" : "ghost"}
+            className="h-8 rounded-lg px-3 text-xs"
+            onClick={() => setExerciseMode("gym")}
+          >
+            Gym
+          </Button>
+        </div>
+
+        {exerciseMode === "gym" ? (
+          <div className="mb-4 flex flex-wrap gap-2">
+            {(Object.keys(gymTemplates) as Array<keyof typeof gymTemplates>).map((group) => (
+              <Button
+                key={group}
+                type="button"
+                variant={selectedGymGroup === group ? "default" : "outline"}
+                className="h-8 rounded-lg px-3 text-xs"
+                onClick={() => setSelectedGymGroup(group)}
+              >
+                <Dumbbell className="h-3.5 w-3.5" />
+                {group}
+              </Button>
+            ))}
+          </div>
+        ) : null}
+
         <div className="mb-4 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
           <input
             value={customExercise}
@@ -714,14 +971,7 @@ const Health = () => {
             Add
           </Button>
         </div>
-        <div className="mb-4 flex flex-wrap gap-2">
-          {["Chest", "Back", "Legs", "Shoulders", "Arms", "Core"].map((group) => (
-            <Button key={group} type="button" variant="outline" className="h-8 rounded-lg px-3 text-xs" onClick={() => addGymTemplate(group)}>
-              <Dumbbell className="h-3.5 w-3.5" />
-              {group}
-            </Button>
-          ))}
-        </div>
+
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {exercisePlan.map((task) => (
             <div key={task.id} className="rounded-2xl border border-border/60 bg-card/55 p-4">
@@ -732,7 +982,8 @@ const Health = () => {
                   type="button"
                   variant={task.completed ? "outline" : "default"}
                   className={`h-8 rounded-lg px-3 text-xs ${task.completed ? "border-emerald-500/40 text-emerald-600" : ""}`}
-                  onClick={() => toggleExerciseCompleted(task.id)}
+                  onClick={() => markExerciseCompleted(task.id)}
+                  disabled={task.completed}
                 >
                   {task.completed ? "Completed" : "Complete"}
                 </Button>
@@ -753,7 +1004,8 @@ const Health = () => {
                   type="button"
                   variant={task.completed ? "outline" : "default"}
                   className={`h-8 rounded-lg px-3 text-xs ${task.completed ? "border-emerald-500/40 text-emerald-600" : ""}`}
-                  onClick={() => toggleCustomExerciseCompleted(task.id)}
+                  onClick={() => markCustomExerciseCompleted(task.id)}
+                  disabled={task.completed}
                 >
                   {task.completed ? "Completed" : "Complete"}
                 </Button>
@@ -769,11 +1021,31 @@ const Health = () => {
         transition={{ delay: 0.07 }}
         className="glass-card rounded-3xl border-border/50 p-6"
       >
-        <h2 className="mb-4 text-xl font-semibold">Health Trends</h2>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-xl font-semibold">Health Trends</h2>
+          <div className="inline-flex rounded-xl border border-border/60 bg-card/60 p-1">
+            <Button
+              type="button"
+              variant={trendRange === "weekly" ? "default" : "ghost"}
+              className="h-8 rounded-lg px-3 text-xs"
+              onClick={() => setTrendRange("weekly")}
+            >
+              Weekly
+            </Button>
+            <Button
+              type="button"
+              variant={trendRange === "monthly" ? "default" : "ghost"}
+              className="h-8 rounded-lg px-3 text-xs"
+              onClick={() => setTrendRange("monthly")}
+            >
+              Monthly
+            </Button>
+          </div>
+        </div>
         <div className="rounded-2xl border border-border/60 bg-card/45 p-4">
-          <div className="grid h-72 grid-cols-5 items-end gap-3">
-            {trendData.map((point) => (
-              <div key={point.date} className="flex h-full flex-col justify-end gap-2">
+          <div className={`grid h-72 items-end gap-3 ${trendRange === "weekly" ? "grid-cols-7" : "grid-cols-4"}`}>
+            {trendRows.map((point) => (
+              <div key={point.label} className="flex h-full flex-col justify-end gap-2">
                 <motion.div
                   initial={{ height: 0 }}
                   animate={{ height: `${Math.round((point.heartRate / maxHeartRate) * 40)}%` }}
@@ -786,7 +1058,7 @@ const Health = () => {
                   transition={{ duration: 0.7 }}
                   className="rounded-t-md bg-health-teal/85"
                 />
-                <p className="text-center text-[11px] font-medium text-muted-foreground">{point.date}</p>
+                <p className="text-center text-[11px] font-medium text-muted-foreground">{point.label}</p>
               </div>
             ))}
           </div>
