@@ -8,6 +8,13 @@ import { Button } from "@/components/Button";
 import Footer from "@/components/Footer";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/authContext";
+import {
+  markAllNotificationsRead,
+  markNotificationRead,
+  NOTIFICATIONS_UPDATED_EVENT,
+  readNotifications,
+  type AppNotification,
+} from "@/lib/notifications";
 
 interface AppLayoutProps {
   title?: ReactNode;
@@ -29,19 +36,37 @@ const getInitials = (fullName?: string | null): string => {
   return `${nameParts[0][0] ?? ""}${nameParts[nameParts.length - 1][0] ?? ""}`.toUpperCase();
 };
 
+const formatNotificationTime = (isoDate: string): string => {
+  const created = new Date(isoDate).getTime();
+  if (!Number.isFinite(created)) return "now";
+  const minutes = Math.max(1, Math.floor((Date.now() - created) / 60_000));
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+};
+
 const AppLayout = ({ title, subtitle, centerHeader = false, hideHeader = false, children }: AppLayoutProps) => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [notificationMenuOpen, setNotificationMenuOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const location = useLocation();
   const navigate = useNavigate();
   const { logout, user } = useAuth();
   const userMenuRef = useRef<HTMLDivElement | null>(null);
+  const notificationMenuRef = useRef<HTMLDivElement | null>(null);
   const isSettingsPage = location.pathname === "/settings";
   const isHealthPage = location.pathname === "/health";
   const isMobileSearchVisible = isHealthPage;
   const userInitials = useMemo(() => getInitials(user?.full_name), [user?.full_name]);
+  const unreadNotificationCount = useMemo(
+    () => notifications.reduce((count, item) => (item.read ? count : count + 1), 0),
+    [notifications],
+  );
 
   const searchPlaceholders: Record<string, string> = {
     "/dashboard": "Search dashboard insights...",
@@ -59,18 +84,35 @@ const AppLayout = ({ title, subtitle, centerHeader = false, hideHeader = false, 
 
   useEffect(() => {
     setUserMenuOpen(false);
+    setNotificationMenuOpen(false);
   }, [location.pathname]);
 
   useEffect(() => {
     const handleOutsideClick = (event: MouseEvent) => {
-      if (!userMenuRef.current) return;
-      if (!userMenuRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      if (userMenuRef.current && !userMenuRef.current.contains(target)) {
         setUserMenuOpen(false);
+      }
+      if (notificationMenuRef.current && !notificationMenuRef.current.contains(target)) {
+        setNotificationMenuOpen(false);
       }
     };
 
     document.addEventListener("mousedown", handleOutsideClick);
     return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, []);
+
+  useEffect(() => {
+    setNotifications(readNotifications());
+
+    const refreshNotifications = () => setNotifications(readNotifications());
+
+    window.addEventListener(NOTIFICATIONS_UPDATED_EVENT, refreshNotifications as EventListener);
+    window.addEventListener("storage", refreshNotifications);
+    return () => {
+      window.removeEventListener(NOTIFICATIONS_UPDATED_EVENT, refreshNotifications as EventListener);
+      window.removeEventListener("storage", refreshNotifications);
+    };
   }, []);
 
   const handleLogout = async () => {
@@ -94,6 +136,11 @@ const AppLayout = ({ title, subtitle, centerHeader = false, hideHeader = false, 
     if (typeof browserFind === "function") {
       browserFind(query, false, false, true, false, false, false);
     }
+  };
+
+  const handleMarkAllRead = () => {
+    markAllNotificationsRead();
+    setNotifications(readNotifications());
   };
 
   return (
@@ -170,10 +217,68 @@ const AppLayout = ({ title, subtitle, centerHeader = false, hideHeader = false, 
 
               {isSettingsPage ? null : (
                 <>
-                  <Button type="button" variant="ghost" size="icon" className="relative h-9 w-9 rounded-xl">
-                    <Bell className="h-4 w-4" />
-                    <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-health-rose" />
-                  </Button>
+                  <div className="relative" ref={notificationMenuRef}>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="relative h-9 w-9 rounded-xl"
+                      onClick={() => setNotificationMenuOpen((prev) => !prev)}
+                    >
+                      <Bell className="h-4 w-4" />
+                      {unreadNotificationCount ? (
+                        <span className="absolute -right-1 -top-1 inline-flex min-w-[1.1rem] items-center justify-center rounded-full bg-health-rose px-1 text-[10px] font-bold text-white">
+                          {unreadNotificationCount > 9 ? "9+" : unreadNotificationCount}
+                        </span>
+                      ) : null}
+                    </Button>
+                    <AnimatePresence>
+                      {notificationMenuOpen ? (
+                        <motion.div
+                          initial={{ opacity: 0, y: -6, scale: 0.98 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: -6, scale: 0.98 }}
+                          transition={{ duration: 0.15 }}
+                          className="absolute right-0 top-10 z-30 w-[19rem] rounded-xl border border-border/60 bg-card p-2 shadow-lg"
+                        >
+                          <div className="mb-2 flex items-center justify-between px-1 py-1">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Notifications</p>
+                            <Button type="button" variant="ghost" className="h-7 rounded-md px-2 text-[11px]" onClick={handleMarkAllRead}>
+                              Mark all read
+                            </Button>
+                          </div>
+                          <div className="max-h-72 space-y-1 overflow-y-auto pr-1">
+                            {notifications.length ? (
+                              notifications.slice(0, 8).map((item) => (
+                                <button
+                                  key={item.id}
+                                  type="button"
+                                  className={cn(
+                                    "w-full rounded-lg border px-3 py-2 text-left transition hover:border-primary/40",
+                                    item.read ? "border-border/45 bg-card/65" : "border-primary/30 bg-primary/10",
+                                  )}
+                                  onClick={() => {
+                                    if (!item.read) {
+                                      markNotificationRead(item.id);
+                                      setNotifications(readNotifications());
+                                    }
+                                  }}
+                                >
+                                  <p className="text-xs font-semibold">{item.title}</p>
+                                  <p className="mt-0.5 text-xs text-muted-foreground">{item.message}</p>
+                                  <p className="mt-1 text-[11px] text-muted-foreground">{formatNotificationTime(item.createdAt)}</p>
+                                </button>
+                              ))
+                            ) : (
+                              <div className="rounded-lg border border-dashed border-border/70 bg-card/50 px-3 py-4 text-xs text-muted-foreground">
+                                No notifications yet.
+                              </div>
+                            )}
+                          </div>
+                        </motion.div>
+                      ) : null}
+                    </AnimatePresence>
+                  </div>
 
                   <div className="relative" ref={userMenuRef}>
                     <button
