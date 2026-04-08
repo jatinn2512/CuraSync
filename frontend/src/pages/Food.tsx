@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import {
   AlertTriangle,
   Beef,
+  Camera,
   CheckCircle2,
   Flame,
   History,
@@ -17,7 +18,9 @@ import {
 } from "lucide-react";
 import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/Button";
+import CameraCaptureModal from "@/components/CameraCaptureModal";
 import { apiClient } from "@/lib/apiClient";
+import { estimateFoodRiskFromImage, scanStructuredDataFromImage } from "@/lib/cameraScan";
 import { pushNotification } from "@/lib/notifications";
 
 const macros = [
@@ -106,6 +109,14 @@ type FoodOverviewSummary = {
 
 type RiskOverviewResponse = {
   food?: FoodOverviewSummary | null;
+};
+
+type FoodScanResult = {
+  alert: AlertLevel;
+  title: string;
+  message: string;
+  confidence: number;
+  scannedAt: string;
 };
 
 const initialMeals: Meal[] = [];
@@ -213,6 +224,39 @@ const isVegDish = (dishName: string): boolean => {
   return vegKeywords.some((keyword) => name.includes(keyword)) || !nonVegKeywords.some((keyword) => name.includes(keyword));
 };
 
+const pickScanValue = (payload: Record<string, unknown> | null, keys: string[]): string => {
+  if (!payload) return "";
+  const loweredPayload = Object.fromEntries(Object.entries(payload).map(([key, value]) => [key.toLowerCase(), value]));
+  for (const key of keys) {
+    const raw = loweredPayload[key.toLowerCase()];
+    if (raw === null || raw === undefined) continue;
+    const text = String(raw).trim();
+    if (text) return text;
+  }
+  return "";
+};
+
+const deriveDishHintFromRawScanText = (rawValue: string): string => {
+  const normalized = rawValue
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  if (!normalized.length) return "";
+
+  const labeledLine = normalized.find((line) => /^(dish|food|meal|item)\s*[:=-]/i.test(line));
+  if (labeledLine) {
+    const resolved = labeledLine.replace(/^(dish|food|meal|item)\s*[:=-]\s*/i, "").trim();
+    if (resolved) return resolved;
+  }
+
+  const candidate = normalized.find((line) => {
+    if (line.length < 2 || line.length > 72) return false;
+    if (/^\d[\d\s/.-]*$/.test(line)) return false;
+    return /[a-z]/i.test(line);
+  });
+  return candidate ?? "";
+};
+
 const Food = () => {
   const [activeTab, setActiveTab] = useState<"meal" | "restaurant">("meal");
   const [now, setNow] = useState<Date>(() => new Date());
@@ -247,6 +291,9 @@ const Food = () => {
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [historyItems, setHistoryItems] = useState<RestaurantInteractionHistory[]>([]);
   const [historyFoodSummary, setHistoryFoodSummary] = useState<FoodOverviewSummary | null>(null);
+  const [showFoodCamera, setShowFoodCamera] = useState(false);
+  const [isFoodScanProcessing, setIsFoodScanProcessing] = useState(false);
+  const [foodScanResult, setFoodScanResult] = useState<FoodScanResult | null>(null);
 
   const addMeal = () => {
     if (!newMeal.items.trim()) return;
@@ -557,6 +604,92 @@ const Food = () => {
     setConfirmingChoice(false);
   };
 
+  const handleFoodCameraScan = async (imageDataUrl: string) => {
+    setIsFoodScanProcessing(true);
+    setRestaurantError(null);
+
+    try {
+      const scanResult = await scanStructuredDataFromImage(imageDataUrl);
+      const detectedDishHint =
+        pickScanValue(scanResult?.parsed ?? null, ["dish_name", "food_name", "meal", "item", "dish", "food"]) ||
+        deriveDishHintFromRawScanText(scanResult?.rawValue ?? "") ||
+        "";
+
+      let matchedDish: DishCatalog | null = null;
+      let matchedRestaurantName = "";
+      if (detectedDishHint) {
+        const catalogResponse = await apiClient.get<RestaurantCatalogResponse>(
+          `/restaurant/catalog?q=${encodeURIComponent(detectedDishHint)}`,
+        );
+        if (catalogResponse.data?.restaurants?.length) {
+          const hint = detectedDishHint.toLowerCase();
+          for (const restaurant of catalogResponse.data.restaurants) {
+            const foundDish = restaurant.dishes.find((dish) => {
+              const dishName = dish.name.toLowerCase();
+              return dishName.includes(hint) || hint.includes(dishName);
+            });
+            if (foundDish) {
+              matchedDish = foundDish;
+              matchedRestaurantName = restaurant.name;
+              break;
+            }
+          }
+        }
+      }
+
+      let resultPayload: FoodScanResult;
+      if (matchedDish) {
+        resultPayload = {
+          alert: matchedDish.alert,
+          title: `Detected ${matchedDish.name}`,
+          message: `${matchedDish.alert_message} Matched from ${scanResult?.source === "ocr" ? "photo text" : "QR"} scan.`,
+          confidence: 0.86,
+          scannedAt: new Date().toISOString(),
+        };
+      } else {
+        const estimated = await estimateFoodRiskFromImage(imageDataUrl);
+        resultPayload = {
+          alert: estimated.alert,
+          title: detectedDishHint ? `Detected ${detectedDishHint}` : "Camera Food Scan",
+          message: estimated.reasons.join(" "),
+          confidence: estimated.confidence,
+          scannedAt: new Date().toISOString(),
+        };
+      }
+
+      setFoodScanResult(resultPayload);
+
+      await apiClient.post("/restaurant/interactions", {
+        restaurant_name: matchedRestaurantName || "Camera Scan",
+        action: "camera_scan",
+        query_text: detectedDishHint || "image_scan",
+        dish_name: matchedDish?.name || detectedDishHint || null,
+        impact_label: resultPayload.alert,
+      });
+
+      pushNotification({
+        type: "food",
+        title: "Food scan completed",
+        message: `${resultPayload.title} - ${alertMeta[resultPayload.alert].label} risk`,
+      });
+
+      if (matchedDish) {
+        setActiveTab("restaurant");
+        setQuery(matchedDish.name);
+      }
+
+      if (showHistory) {
+        void loadHistory();
+      }
+
+      setShowFoodCamera(false);
+    } catch (error) {
+      setRestaurantError(error instanceof Error ? error.message : "Unable to scan food from camera.");
+    } finally {
+      setIsFoodScanProcessing(false);
+    }
+  };
+
   return (
     <AppLayout title="Food" subtitle="Track nutrition and choose better restaurant dishes with health-aware guidance.">
       <section className="flex flex-wrap items-center justify-between gap-3">
@@ -578,12 +711,33 @@ const Food = () => {
               Add Meal
             </Button>
           ) : null}
+          <Button type="button" variant="outline" className="h-10 rounded-xl px-4" onClick={() => setShowFoodCamera(true)}>
+            <Camera className="h-4 w-4" />
+            Scan Food
+          </Button>
           <Button type="button" variant="outline" className="h-10 rounded-xl px-4" onClick={openHistory}>
             <History className="h-4 w-4" />
             History
           </Button>
         </div>
       </section>
+
+      {foodScanResult ? (
+        <section className={`rounded-2xl border bg-card/60 p-4 ${alertMeta[foodScanResult.alert].panelClass}`}>
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div>
+              <p className="text-sm font-semibold">{foodScanResult.title}</p>
+              <p className="mt-1 text-xs">{foodScanResult.message}</p>
+            </div>
+            <span className={`inline-flex rounded-full px-2 py-1 text-[11px] font-semibold ${alertMeta[foodScanResult.alert].badgeClass}`}>
+              {alertMeta[foodScanResult.alert].label} risk
+            </span>
+          </div>
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            Confidence {(foodScanResult.confidence * 100).toFixed(0)}% | {new Date(foodScanResult.scannedAt).toLocaleString()}
+          </p>
+        </section>
+      ) : null}
 
       {activeTab === "meal" ? (
         <>
@@ -1091,6 +1245,15 @@ const Food = () => {
             document.body,
           )
         : null}
+      <CameraCaptureModal
+        open={showFoodCamera}
+        title="Food Camera Scan"
+        subtitle="Capture food image. It can read QR and visible photo text to detect dish hints before risk analysis."
+        captureLabel="Scan & Analyze"
+        processing={isFoodScanProcessing}
+        onClose={() => setShowFoodCamera(false)}
+        onCapture={handleFoodCameraScan}
+      />
     </AppLayout>
   );
 };
