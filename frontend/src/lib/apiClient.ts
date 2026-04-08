@@ -16,6 +16,13 @@ export interface UserProfileData {
   weight_kg: number | null;
   target_weight_kg?: number | null;
   activity_level: string | null;
+  eyesight_left?: string | null;
+  eyesight_right?: string | null;
+  disability_status?: string | null;
+  chronic_conditions?: string | null;
+  allergies?: string | null;
+  smoking_status?: string | null;
+  alcohol_intake?: string | null;
   medical_notes?: string | null;
 }
 
@@ -172,7 +179,7 @@ export class ApiClient {
           });
         } else {
           clearAuthSession();
-          window.location.href = '/login';
+          window.location.href = '/';
           return { status: 401, error: 'Session expired. Please login again.' };
         }
       }
@@ -264,6 +271,13 @@ export class ApiClient {
     height_cm?: number;
     weight_kg?: number;
     activity_level?: string;
+    eyesight_left?: string;
+    eyesight_right?: string;
+    disability_status?: string;
+    chronic_conditions?: string;
+    allergies?: string;
+    smoking_status?: string;
+    alcohol_intake?: string;
     medical_notes?: string;
   }): Promise<
     ApiResponse<CurrentUserData>
