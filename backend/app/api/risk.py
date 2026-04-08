@@ -7,11 +7,16 @@ from app.schemas.risk import (
     ActivityLogCreate,
     ActivityLogOut,
     FeatureEventCreate,
+    InstantAlertCreate,
+    InstantAlertHistoryResponse,
+    InstantAlertResponse,
     RiskAssessmentCreate,
     SleepLogCreate,
     SleepLogOut,
     VitalsLogCreate,
     VitalsLogOut,
+    WearableSyncCreate,
+    WearableSyncResponse,
 )
 from app.services import auth_service, risk_service
 
@@ -71,3 +76,30 @@ def get_latest_overview(
     db: Session = Depends(get_tracking_db),
 ):
     return risk_service.latest_overview(db, current_user.id)
+
+
+@router.post("/instant-alert", response_model=InstantAlertResponse)
+def create_instant_alert(
+    payload: InstantAlertCreate,
+    current_user: User = Depends(auth_service.get_current_user),
+    db: Session = Depends(get_tracking_db),
+):
+    return risk_service.create_instant_alert(db, current_user.id, payload)
+
+
+@router.get("/instant-alert/history", response_model=InstantAlertHistoryResponse)
+def get_instant_alert_history(
+    limit: int = 15,
+    current_user: User = Depends(auth_service.get_current_user),
+    db: Session = Depends(get_tracking_db),
+):
+    return risk_service.get_instant_alert_history(db, current_user.id, limit=limit)
+
+
+@router.post("/wearable-sync", response_model=WearableSyncResponse)
+def sync_wearable_data(
+    payload: WearableSyncCreate,
+    current_user: User = Depends(auth_service.get_current_user),
+    db: Session = Depends(get_tracking_db),
+):
+    return risk_service.sync_wearable_data(db, current_user.id, payload)
