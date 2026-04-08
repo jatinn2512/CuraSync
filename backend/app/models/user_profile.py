@@ -17,6 +17,13 @@ class UserProfile(CoreBase):
     target_weight_kg: Mapped[float | None] = mapped_column(Float, nullable=True)
     activity_level: Mapped[str | None] = mapped_column(String(30), nullable=True)
     date_of_birth: Mapped[date | None] = mapped_column(Date, nullable=True)
+    eyesight_left: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    eyesight_right: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    disability_status: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    chronic_conditions: Mapped[str | None] = mapped_column(Text, nullable=True)
+    allergies: Mapped[str | None] = mapped_column(Text, nullable=True)
+    smoking_status: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    alcohol_intake: Mapped[str | None] = mapped_column(String(30), nullable=True)
     medical_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
