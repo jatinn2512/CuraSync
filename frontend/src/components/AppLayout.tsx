@@ -6,6 +6,7 @@ import Sidebar from "@/components/Sidebar";
 import ThemeToggle from "@/components/ThemeToggle";
 import { Button } from "@/components/Button";
 import Footer from "@/components/Footer";
+import HealthChatbot from "@/components/HealthChatbot";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/authContext";
 import {
@@ -123,7 +124,7 @@ const AppLayout = ({ title, subtitle, centerHeader = false, hideHeader = false, 
 
     try {
       await logout();
-      navigate("/login", { replace: true });
+      navigate("/", { replace: true });
     } finally {
       setIsLoggingOut(false);
     }
@@ -329,6 +330,7 @@ const AppLayout = ({ title, subtitle, centerHeader = false, hideHeader = false, 
             <div className="space-y-6">{children}</div>
           </motion.div>
         </main>
+        <HealthChatbot />
         <Footer />
       </div>
     </div>
