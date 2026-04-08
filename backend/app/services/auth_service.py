@@ -186,6 +186,20 @@ def update_profile(db: Session, user: User, payload: UpdateProfileRequest) -> Us
         profile.weight_kg = payload.weight_kg
     if payload.activity_level is not None:
         profile.activity_level = payload.activity_level
+    if payload.eyesight_left is not None:
+        profile.eyesight_left = payload.eyesight_left
+    if payload.eyesight_right is not None:
+        profile.eyesight_right = payload.eyesight_right
+    if payload.disability_status is not None:
+        profile.disability_status = payload.disability_status
+    if payload.chronic_conditions is not None:
+        profile.chronic_conditions = payload.chronic_conditions
+    if payload.allergies is not None:
+        profile.allergies = payload.allergies
+    if payload.smoking_status is not None:
+        profile.smoking_status = payload.smoking_status
+    if payload.alcohol_intake is not None:
+        profile.alcohol_intake = payload.alcohol_intake
     if payload.medical_notes is not None:
         profile.medical_notes = payload.medical_notes
 
