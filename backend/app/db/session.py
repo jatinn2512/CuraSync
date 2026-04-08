@@ -72,7 +72,8 @@ def _apply_sqlite_schema_patches() -> None:
         return
 
     inspector = inspect(core_engine)
-    if "users" not in inspector.get_table_names():
+    table_names = inspector.get_table_names()
+    if "users" not in table_names:
         return
 
     existing_columns = {column["name"] for column in inspector.get_columns("users")}
@@ -85,11 +86,37 @@ def _apply_sqlite_schema_patches() -> None:
     if "last_login_at" not in existing_columns:
         statements.append("ALTER TABLE users ADD COLUMN last_login_at DATETIME")
 
-    if not statements:
+    if statements:
+        with core_engine.begin() as connection:
+            for statement in statements:
+                connection.execute(text(statement))
+
+    if "user_profiles" not in table_names:
+        return
+
+    profile_columns = {column["name"] for column in inspector.get_columns("user_profiles")}
+    profile_statements: list[str] = []
+
+    if "eyesight_left" not in profile_columns:
+        profile_statements.append("ALTER TABLE user_profiles ADD COLUMN eyesight_left VARCHAR(30)")
+    if "eyesight_right" not in profile_columns:
+        profile_statements.append("ALTER TABLE user_profiles ADD COLUMN eyesight_right VARCHAR(30)")
+    if "disability_status" not in profile_columns:
+        profile_statements.append("ALTER TABLE user_profiles ADD COLUMN disability_status VARCHAR(30)")
+    if "chronic_conditions" not in profile_columns:
+        profile_statements.append("ALTER TABLE user_profiles ADD COLUMN chronic_conditions TEXT")
+    if "allergies" not in profile_columns:
+        profile_statements.append("ALTER TABLE user_profiles ADD COLUMN allergies TEXT")
+    if "smoking_status" not in profile_columns:
+        profile_statements.append("ALTER TABLE user_profiles ADD COLUMN smoking_status VARCHAR(30)")
+    if "alcohol_intake" not in profile_columns:
+        profile_statements.append("ALTER TABLE user_profiles ADD COLUMN alcohol_intake VARCHAR(30)")
+
+    if not profile_statements:
         return
 
     with core_engine.begin() as connection:
-        for statement in statements:
+        for statement in profile_statements:
             connection.execute(text(statement))
 
 
