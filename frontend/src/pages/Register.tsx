@@ -8,7 +8,7 @@ const heroImg = "/assets/hero-health-ai.png";
 
 const Register = () => {
   const navigate = useNavigate();
-  const { register, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { register, user, isLoading: authLoading } = useAuth();
   
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -20,10 +20,10 @@ const Register = () => {
   const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
-    if (isAuthenticated && !authLoading) {
+    if (user && !authLoading) {
       navigate("/dashboard", { replace: true });
     }
-  }, [isAuthenticated, authLoading, navigate]);
+  }, [user, authLoading, navigate]);
 
   const onCreateAccount = async () => {
     if (isCreating || authLoading) return;
