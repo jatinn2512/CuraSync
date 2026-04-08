@@ -11,6 +11,7 @@ import Profile from "./pages/Profile";
 import Settings from "./pages/Settings";
 import About from "./pages/About";
 import Analysis from "./pages/Analysis";
+import InstantAlert from "./pages/InstantAlert";
 import Pricing from "./pages/Pricing";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -27,6 +28,22 @@ const AnimatedRoutes = () => {
       <Routes location={location} key={location.pathname}>
         <Route
           path="/"
+          element={
+            <PageTransition>
+              <Home />
+            </PageTransition>
+          }
+        />
+        <Route
+          path="/home"
+          element={
+            <PageTransition>
+              <Home />
+            </PageTransition>
+          }
+        />
+        <Route
+          path="/index.html"
           element={
             <PageTransition>
               <Home />
@@ -145,6 +162,16 @@ const AnimatedRoutes = () => {
             <ProtectedRoute>
               <PageTransition>
                 <Analysis />
+              </PageTransition>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/instant-alert"
+          element={
+            <ProtectedRoute>
+              <PageTransition>
+                <InstantAlert />
               </PageTransition>
             </ProtectedRoute>
           }
