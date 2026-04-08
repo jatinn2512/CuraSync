@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { apiClient, CurrentUserData } from './apiClient';
-import { clearAuthSession, getAccessToken, isAuthenticated, saveAuthSession } from './auth';
+import { clearAuthSession, isAuthenticated, saveAuthSession } from './auth';
 
 export type CurrentUser = CurrentUserData;
 
@@ -127,9 +127,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
 
         saveAuthSession(response.data.access_token, response.data.refresh_token);
-
-        // Do not block login UX on /auth/me. Fetch profile in background.
-        void fetchCurrentUser();
+        const profileResponse = await apiClient.getCurrentUser();
+        if (profileResponse.error || !profileResponse.data) {
+          clearAuthSession();
+          throw new Error(profileResponse.error || 'Unable to load your account after login.');
+        }
+        setUser(profileResponse.data);
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Login failed';
         setError(errorMessage);
@@ -162,7 +165,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const value: AuthContextType = {
     user,
-    isAuthenticated: isAuthenticated(),
+    isAuthenticated: Boolean(user) || isAuthenticated(),
     isLoading,
     error,
     register,
