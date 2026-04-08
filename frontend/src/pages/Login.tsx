@@ -9,7 +9,7 @@ const heroImg = "/assets/hero-health-ai.png";
 const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { login, user, isLoading: authLoading } = useAuth();
   
   const [showPassword, setShowPassword] = useState(false);
   const [isSigningIn, setIsSigningIn] = useState(false);
@@ -17,16 +17,22 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   
-  const redirectTo = useMemo(() => {
+  const { redirectTo, shouldAutoRedirect } = useMemo(() => {
     const state = location.state as { from?: string } | null;
-    return state?.from || "/dashboard";
+    const requestedPath = state?.from?.trim();
+    const isProtectedReturn = !!requestedPath && requestedPath !== "/login" && requestedPath !== "/register";
+    if (!requestedPath || requestedPath === "/login" || requestedPath === "/register") {
+      return { redirectTo: "/dashboard", shouldAutoRedirect: false };
+    }
+    return { redirectTo: requestedPath, shouldAutoRedirect: isProtectedReturn };
   }, [location.state]);
 
   useEffect(() => {
-    if (isAuthenticated && !authLoading) {
+    // Auto-redirect only when user was sent from a protected route.
+    if (user && !authLoading && shouldAutoRedirect) {
       navigate(redirectTo, { replace: true });
     }
-  }, [isAuthenticated, authLoading, navigate, redirectTo]);
+  }, [user, authLoading, navigate, redirectTo, shouldAutoRedirect]);
 
   const onLogin = async () => {
     if (isSigningIn || authLoading) return;
@@ -46,6 +52,7 @@ const Login = () => {
 
     try {
       await login(normalizedEmail, password);
+      navigate(redirectTo, { replace: true });
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : "Invalid email or password.";
       setErrorMessage(errorMsg);
