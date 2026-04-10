@@ -20,6 +20,8 @@ import {
 } from "lucide-react";
 import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/Button";
+import RiskDriftTracker from "@/components/RiskDriftTracker";
+import WeeklyPlanGenerator from "@/components/WeeklyPlanGenerator";
 import { getAccessToken, getApiBaseUrl } from "@/lib/auth";
 import { apiClient } from "@/lib/apiClient";
 import { pushNotification } from "@/lib/notifications";
@@ -917,6 +919,10 @@ const Health = () => {
           </div>
         </motion.article>
       </section>
+
+      <WeeklyPlanGenerator conditionRisks={conditionRisks.map((risk) => ({ id: risk.id, name: risk.name, level: risk.level }))} />
+
+      <RiskDriftTracker />
 
       <section className="glass-card rounded-3xl border-border/50 p-6">
         <h2 className="mb-4 flex items-center gap-2 text-xl font-semibold">
