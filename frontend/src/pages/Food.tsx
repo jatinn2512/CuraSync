@@ -119,6 +119,16 @@ type FoodScanResult = {
   scannedAt: string;
 };
 
+type MealSwapSuggestion = {
+  dish: DishCatalog;
+  healthGainScore: number;
+  similarityScore: number;
+  caloriesDelta: number;
+  sodiumDelta: number;
+  sugarDelta: number;
+  fatDelta: number;
+};
+
 const initialMeals: Meal[] = [];
 
 const alertMeta: Record<
@@ -164,6 +174,44 @@ const toAlertLevel = (value: string | null | undefined): AlertLevel => {
     return key;
   }
   return "yellow";
+};
+
+const alertRank: Record<AlertLevel, number> = {
+  green: 0,
+  yellow: 1,
+  red: 2,
+};
+
+const dishStopWords = new Set(["with", "and", "the", "style", "special", "masala", "combo"]);
+
+const tokenizeDishName = (name: string): string[] =>
+  name
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .split(/\s+/)
+    .filter((token) => token.length >= 3 && !dishStopWords.has(token));
+
+const computeDishSimilarity = (sourceName: string, candidateName: string): number => {
+  const sourceTokens = new Set(tokenizeDishName(sourceName));
+  const candidateTokens = new Set(tokenizeDishName(candidateName));
+  if (!sourceTokens.size || !candidateTokens.size) return 0;
+
+  let overlap = 0;
+  for (const token of sourceTokens) {
+    if (candidateTokens.has(token)) overlap += 1;
+  }
+  return overlap / Math.max(sourceTokens.size, candidateTokens.size);
+};
+
+const computeHealthGain = (source: DishCatalog, candidate: DishCatalog): number => {
+  const alertGain = (alertRank[source.alert] - alertRank[candidate.alert]) * 2.2;
+  const caloriesGain = (source.calories - candidate.calories) / 90;
+  const sodiumGain = (source.sodium_mg - candidate.sodium_mg) / 220;
+  const sugarGain = (source.sugar_g - candidate.sugar_g) / 5.5;
+  const fatGain = (source.fat_g - candidate.fat_g) / 7;
+  const fiberGain = (candidate.fiber_g - source.fiber_g) / 3;
+
+  return alertGain + caloriesGain + sodiumGain + sugarGain + fatGain + fiberGain;
 };
 
 const getMealOptionsByHour = (hour: number): Meal["type"][] => {
@@ -464,6 +512,43 @@ const Food = () => {
   }, [selectedRestaurant]);
 
   const selectedDish = selectedRestaurant?.dishes.find((dish) => dish.id === selectedDishId) ?? null;
+
+  const mealSwapSuggestions = useMemo(() => {
+    if (!selectedRestaurant || !selectedDish || selectedDish.alert === "green") {
+      return [];
+    }
+
+    const candidatePool =
+      dietPreference === "veg"
+        ? selectedRestaurant.dishes.filter((dish) => isVegDish(dish.name))
+        : selectedRestaurant.dishes;
+
+    const ranked = candidatePool
+      .filter((dish) => dish.id !== selectedDish.id)
+      .map((dish) => {
+        const similarityScore = computeDishSimilarity(selectedDish.name, dish.name);
+        const healthGainScore = computeHealthGain(selectedDish, dish);
+        return {
+          dish,
+          healthGainScore,
+          similarityScore,
+          caloriesDelta: dish.calories - selectedDish.calories,
+          sodiumDelta: Number((dish.sodium_mg - selectedDish.sodium_mg).toFixed(1)),
+          sugarDelta: Number((dish.sugar_g - selectedDish.sugar_g).toFixed(1)),
+          fatDelta: Number((dish.fat_g - selectedDish.fat_g).toFixed(1)),
+        } satisfies MealSwapSuggestion;
+      })
+      .filter((item) => item.healthGainScore > 0.2)
+      .sort(
+        (left, right) =>
+          right.healthGainScore - left.healthGainScore ||
+          right.similarityScore - left.similarityScore ||
+          left.dish.sodium_mg - right.dish.sodium_mg ||
+          left.dish.calories - right.dish.calories,
+      );
+
+    return ranked.slice(0, 3);
+  }, [dietPreference, selectedDish, selectedRestaurant]);
 
   const restaurantCards = useMemo(() => {
     if (dietPreference !== "veg") {
@@ -1043,6 +1128,41 @@ const Food = () => {
                                             Vitamins: {dish.vitamins.length ? dish.vitamins.join(", ") : "Not specified"}
                                           </div>
 
+                                          {selectedDishId === dish.id && dish.alert !== "green" ? (
+                                            <div className="rounded-lg border border-primary/30 bg-primary/10 p-2 text-[11px] text-muted-foreground">
+                                              <p className="mb-1 font-semibold text-foreground">Meal Swap Engine</p>
+                                              {mealSwapSuggestions.length ? (
+                                                <div className="space-y-2">
+                                                  {mealSwapSuggestions.map((swap) => (
+                                                    <div key={`swap-mobile-${swap.dish.id}`} className="rounded-md border border-border/60 bg-card/70 p-2">
+                                                      <div className="flex items-center justify-between gap-2">
+                                                        <p className="text-[11px] font-semibold text-foreground">{swap.dish.name}</p>
+                                                        <span className={`inline-flex rounded-full px-2 py-0.5 ${alertMeta[swap.dish.alert].badgeClass}`}>
+                                                          {alertMeta[swap.dish.alert].label}
+                                                        </span>
+                                                      </div>
+                                                      <p className="mt-1">
+                                                        Calories {swap.caloriesDelta >= 0 ? "+" : ""}
+                                                        {swap.caloriesDelta} | Sodium {swap.sodiumDelta >= 0 ? "+" : ""}
+                                                        {swap.sodiumDelta} mg
+                                                      </p>
+                                                      <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        className="mt-2 h-6 rounded-md px-2 text-[10px]"
+                                                        onClick={() => stageDishChoice(swap.dish)}
+                                                      >
+                                                        Choose this swap
+                                                      </Button>
+                                                    </div>
+                                                  ))}
+                                                </div>
+                                              ) : (
+                                                <p>No clearly safer same-menu alternative found for this dish.</p>
+                                              )}
+                                            </div>
+                                          ) : null}
+
                                           {pendingChoice?.dishId === dish.id ? (
                                             <div className={`rounded-lg border p-2 text-xs ${alertMeta[pendingChoice.alert].panelClass}`}>
                                               <p>{pendingChoice.message}</p>
@@ -1120,6 +1240,46 @@ const Food = () => {
                                     <div className="mt-3 rounded-xl border border-border/60 bg-card/80 p-3 text-xs text-muted-foreground">
                                       Vitamins: {selectedDish.vitamins.length ? selectedDish.vitamins.join(", ") : "Not specified"}
                                     </div>
+
+                                    {selectedDish.alert !== "green" ? (
+                                      <div className="mt-3 rounded-xl border border-primary/30 bg-primary/10 p-3 text-xs">
+                                        <p className="mb-2 font-semibold text-foreground">Meal Swap Engine</p>
+                                        {mealSwapSuggestions.length ? (
+                                          <div className="space-y-2">
+                                            {mealSwapSuggestions.map((swap) => (
+                                              <div key={`swap-desktop-${swap.dish.id}`} className="rounded-lg border border-border/60 bg-card/80 p-2.5 text-muted-foreground">
+                                                <div className="flex items-center justify-between gap-2">
+                                                  <p className="text-xs font-semibold text-foreground">{swap.dish.name}</p>
+                                                  <span className={`inline-flex rounded-full px-2 py-1 text-[11px] font-semibold ${alertMeta[swap.dish.alert].badgeClass}`}>
+                                                    {alertMeta[swap.dish.alert].label}
+                                                  </span>
+                                                </div>
+                                                <p className="mt-1">
+                                                  Calories {swap.caloriesDelta >= 0 ? "+" : ""}
+                                                  {swap.caloriesDelta} | Sodium {swap.sodiumDelta >= 0 ? "+" : ""}
+                                                  {swap.sodiumDelta} mg | Sugar {swap.sugarDelta >= 0 ? "+" : ""}
+                                                  {swap.sugarDelta} g
+                                                </p>
+                                                <p className="mt-1">
+                                                  Fat {swap.fatDelta >= 0 ? "+" : ""}
+                                                  {swap.fatDelta} g | Similarity {(swap.similarityScore * 100).toFixed(0)}%
+                                                </p>
+                                                <Button
+                                                  type="button"
+                                                  variant="outline"
+                                                  className="mt-2 h-7 rounded-md px-2 text-[11px]"
+                                                  onClick={() => stageDishChoice(swap.dish)}
+                                                >
+                                                  Choose this swap
+                                                </Button>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        ) : (
+                                          <p className="text-muted-foreground">No clearly safer same-menu alternative found for this dish.</p>
+                                        )}
+                                      </div>
+                                    ) : null}
 
                                     {pendingChoice ? (
                                       <div className={`mt-4 rounded-xl border p-3 text-sm ${alertMeta[pendingChoice.alert].panelClass}`}>
