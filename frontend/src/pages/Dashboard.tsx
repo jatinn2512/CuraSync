@@ -189,16 +189,19 @@ const Dashboard = () => {
           </span>
         </div>
 
-        <div className="h-56 rounded-2xl border border-border/60 bg-card/55 p-4">
-          <div className="flex h-full items-end gap-3">
+        <div className="relative h-56 overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-b from-card/75 to-card/35 p-4">
+          <div className="pointer-events-none absolute inset-0 opacity-45 [background-image:linear-gradient(to_top,hsl(var(--border))_1px,transparent_1px)] [background-size:100%_22%]" />
+          <div className="relative flex h-full items-end gap-3">
             {weeklyData.map((row) => (
               <div key={row.day} className="flex h-full flex-1 flex-col justify-end">
                 <motion.div
                   initial={{ height: 0 }}
                   animate={{ height: `${Math.round((row.steps / maxSteps) * 100)}%` }}
                   transition={{ duration: 0.7 }}
-                  className="min-h-5 rounded-t-lg bg-health-teal/85"
-                />
+                  className="relative min-h-5 rounded-t-lg bg-gradient-to-t from-health-teal/65 via-health-teal/80 to-health-cyan/85 shadow-[0_10px_16px_-12px_rgba(20,184,166,0.9)]"
+                >
+                  <span className="absolute -top-5 left-1/2 -translate-x-1/2 text-[10px] font-semibold text-muted-foreground">{row.steps}</span>
+                </motion.div>
                 <p className="mt-2 text-center text-[11px] font-medium text-muted-foreground">{row.day}</p>
               </div>
             ))}
