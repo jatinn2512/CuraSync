@@ -485,10 +485,10 @@ const Health = () => {
   const [exportError, setExportError] = useState("");
   const [exportSuccess, setExportSuccess] = useState("");
   const [exportScope, setExportScope] = useState<ExportScope>("complete");
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [conditionRisks, setConditionRisks] = useState<ConditionRisk[]>(() => buildPlaceholderConditionRisks());
   const [riskInfoMessage, setRiskInfoMessage] = useState("Add your health logs to generate personalized risk alerts.");
   const [isRiskLoading, setIsRiskLoading] = useState(true);
-  const [riskOverview, setRiskOverview] = useState<RiskOverview | null>(null);
   const [exercisePlan, setExercisePlan] = useState<ExerciseTask[]>(() => buildExercisePlan(new Date().getHours()));
   const [exerciseMode, setExerciseMode] = useState<"home" | "gym">("home");
   const [selectedGymGroup, setSelectedGymGroup] = useState<keyof typeof gymTemplates>("Chest");
@@ -499,7 +499,6 @@ const Health = () => {
 
   const selectedRisk = conditionRisks.find((risk) => risk.id === selectedRiskId) ?? null;
   const selectedSymptom = symptomPresets.find((symptom) => symptom.id === selectedSymptomId) ?? null;
-  const foodOverview = riskOverview?.food ?? null;
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -534,7 +533,6 @@ const Health = () => {
 
       const user = userResponse.data;
       const overview = overviewResponse.data ?? null;
-      setRiskOverview(overview);
       const hasVitals = Boolean(overview?.vitals && (overview.vitals.systolic_bp ?? overview.vitals.heart_rate));
       const hasActivity = Boolean(overview?.activity && ((overview.activity.steps ?? 0) > 0 || (overview.activity.workout_minutes ?? 0) > 0));
       const hasBodyProfile = Boolean(user?.profile?.height_cm && user?.profile?.weight_kg);
@@ -631,6 +629,7 @@ const Health = () => {
 
       const scopeLabel = exportScope === "weekly" ? "weekly" : exportScope === "this_month" ? "this month" : "complete";
       setExportSuccess(`User ${scopeLabel} health data exported successfully as PDF.`);
+      setIsExportModalOpen(false);
       setTimeout(() => setExportSuccess(""), 3000);
     } catch (error: unknown) {
       if (error instanceof Error) {
@@ -650,6 +649,11 @@ const Health = () => {
 
   const handleIntensitySelect = (intensity: SymptomIntensity) => {
     setSelectedIntensity(intensity);
+  };
+
+  const clearSymptomSelection = () => {
+    setSelectedSymptomId(null);
+    setSelectedIntensity(null);
   };
 
   const markExerciseCompleted = (taskId: string) => {
@@ -739,68 +743,16 @@ const Health = () => {
             <h2 className="text-xl font-semibold">Export Your Data</h2>
             <p className="text-sm text-muted-foreground">Download complete, weekly, or this month health data in PDF format.</p>
           </div>
-          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
-            <div className="inline-flex rounded-xl border border-border/60 bg-card/60 p-1">
-              {[
-                { key: "complete", label: "Complete" },
-                { key: "weekly", label: "Weekly" },
-                { key: "this_month", label: "This Month" },
-              ].map((option) => (
-                <Button
-                  key={option.key}
-                  type="button"
-                  variant={exportScope === option.key ? "default" : "ghost"}
-                  className="h-8 rounded-lg px-3 text-xs"
-                  onClick={() => setExportScope(option.key as ExportScope)}
-                >
-                  {option.label}
-                </Button>
-              ))}
-            </div>
-            <Button
-              type="button"
-              className="h-10 rounded-xl bg-primary px-4 text-primary-foreground"
-              onClick={handleExportPdf}
-              disabled={isExporting}
-            >
-              <Download className="h-4 w-4" />
-              {isExporting ? "Exporting..." : "Export PDF"}
-            </Button>
-          </div>
+          <Button type="button" className="h-10 rounded-xl bg-primary px-4 text-primary-foreground" onClick={() => setIsExportModalOpen(true)} disabled={isExporting}>
+            <Download className="h-4 w-4" />
+            {isExporting ? "Exporting..." : "Export Data"}
+          </Button>
         </div>
         {exportError && (
           <div className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-500">{exportError}</div>
         )}
         {exportSuccess && (
           <div className="mt-4 rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm text-green-500">{exportSuccess}</div>
-        )}
-      </section>
-
-      <section className="glass-card rounded-3xl border-border/50 p-6">
-        <h2 className="mb-4 text-xl font-semibold">Food Analysis</h2>
-        {foodOverview?.latest_item ? (
-          <div className="grid gap-3 rounded-2xl border border-border/60 bg-card/55 p-4 text-sm md:grid-cols-4">
-            <div className="md:col-span-2">
-              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Latest item</p>
-              <p className="font-semibold">{foodOverview.latest_item}</p>
-            </div>
-            <div>
-              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Alert</p>
-              <p className="font-semibold">{foodOverview.latest_alert ?? "N/A"}</p>
-            </div>
-            <div>
-              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Confirmed</p>
-              <p className="font-semibold">{foodOverview.recent_choices ?? 0}</p>
-            </div>
-            <p className="md:col-span-4 text-xs text-muted-foreground">
-              Green {foodOverview.alert_counts?.green ?? 0} | Yellow {foodOverview.alert_counts?.yellow ?? 0} | Red{" "}
-              {foodOverview.alert_counts?.red ?? 0} | Full detail in Food &gt; History.
-            </p>
-          </div>
-        ) : (
-          <div className="rounded-2xl border border-dashed border-border/70 bg-card/45 p-4 text-sm text-muted-foreground">
-            No confirmed restaurant dishes yet. Confirm a dish in Food page to start food analysis tracking.
-          </div>
         )}
       </section>
 
@@ -876,7 +828,19 @@ const Health = () => {
 
             {selectedSymptom && selectedIntensity ? (
               <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 p-3">
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-emerald-700">Suggestions</p>
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Suggestions</p>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 rounded-md text-emerald-800 hover:bg-emerald-500/20"
+                    onClick={clearSymptomSelection}
+                    aria-label="Clear symptom suggestions"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
                 <ul className="space-y-1 text-sm text-emerald-800">
                   {selectedSymptom.suggestions[selectedIntensity].map((tip) => (
                     <li key={tip} className="flex gap-2">
@@ -997,6 +961,66 @@ const Health = () => {
       </section>
 
       <AnimatePresence>
+        {isExportModalOpen ? (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4"
+            onClick={() => {
+              if (!isExporting) setIsExportModalOpen(false);
+            }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.section
+              className="w-full max-w-lg rounded-3xl border border-border/60 bg-background p-5 shadow-2xl sm:p-6"
+              onClick={(event) => event.stopPropagation()}
+              initial={{ opacity: 0, scale: 0.96, y: 18 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 18 }}
+              transition={{ duration: 0.2 }}
+            >
+              <div className="mb-4 flex items-start justify-between gap-3">
+                <div>
+                  <h3 className="text-xl font-semibold">Export Data</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">Choose the data range and export your health report as PDF.</p>
+                </div>
+                <Button type="button" variant="outline" size="icon" className="h-9 w-9 rounded-full" onClick={() => setIsExportModalOpen(false)} disabled={isExporting}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+
+              <div className="inline-flex rounded-xl border border-border/60 bg-card/60 p-1">
+                {[
+                  { key: "complete", label: "Complete" },
+                  { key: "weekly", label: "Weekly" },
+                  { key: "this_month", label: "This Month" },
+                ].map((option) => (
+                  <Button
+                    key={option.key}
+                    type="button"
+                    variant={exportScope === option.key ? "default" : "ghost"}
+                    className="h-8 rounded-lg px-3 text-xs"
+                    onClick={() => setExportScope(option.key as ExportScope)}
+                    disabled={isExporting}
+                  >
+                    {option.label}
+                  </Button>
+                ))}
+              </div>
+
+              <div className="mt-5 flex justify-end gap-2">
+                <Button type="button" variant="outline" className="h-9 rounded-lg px-3 text-xs" onClick={() => setIsExportModalOpen(false)} disabled={isExporting}>
+                  Cancel
+                </Button>
+                <Button type="button" className="h-9 rounded-lg px-4 text-xs" onClick={handleExportPdf} disabled={isExporting}>
+                  <Download className="h-4 w-4" />
+                  {isExporting ? "Exporting..." : "Export PDF"}
+                </Button>
+              </div>
+            </motion.section>
+          </motion.div>
+        ) : null}
+
         {selectedRisk ? (
           <motion.div
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4"
