@@ -324,7 +324,7 @@ const AppLayout = ({ title, subtitle, centerHeader = false, hideHeader = false, 
             {!hideHeader && title ? (
               <section className={cn("mb-6", centerHeader && "text-center")}>
                 <h1 className="text-3xl font-bold tracking-tight lg:text-4xl">{title}</h1>
-                {subtitle ? <p className="mt-1.5 text-base text-muted-foreground">{subtitle}</p> : null}
+                {subtitle ? <p className="mt-1.5 hidden text-base text-muted-foreground sm:block">{subtitle}</p> : null}
               </section>
             ) : null}
             <div className="space-y-6">{children}</div>

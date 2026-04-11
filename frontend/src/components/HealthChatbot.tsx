@@ -10,55 +10,57 @@ type ChatMessage = {
   text: string;
 };
 
-const quickPrompts = ["Instant alert kaise use karu?", "Food scan ka button kaha hai?", "Smartwatch sync kaise kare?", "Profile autofill kaise hota hai?"] as const;
+const quickPrompts = [
+  "How do I use Instant Alert?",
+  "Where is the food scan button?",
+  "How do I sync my smartwatch?",
+  "How does profile autofill work?",
+] as const;
+
+const includesAny = (source: string, terms: string[]) => terms.some((term) => source.includes(term));
 
 const getBotReply = (input: string): string => {
   const normalized = input.trim().toLowerCase();
 
   if (!normalized) {
-    return "Apna question likho, main app feature ke hisaab se guide kar dunga.";
+    return "Type your question and I will guide you through the app features.";
   }
 
-  if (
-    normalized.includes("emergency") ||
-    normalized.includes("severe chest pain") ||
-    normalized.includes("cannot breathe") ||
-    normalized.includes("unconscious")
-  ) {
-    return "Agar severe emergency symptoms hain to turant local emergency service ya nearest hospital contact karo. App guidance emergency care ka replacement nahi hai.";
+  if (includesAny(normalized, ["emergency", "severe chest pain", "cannot breathe", "unconscious", "fainted"])) {
+    return "If this is an emergency, contact local emergency services or the nearest hospital immediately. This app is guidance only and not emergency care.";
   }
 
-  if (normalized.includes("instant") || normalized.includes("alert") || normalized.includes("risk")) {
-    return "Sidebar me Instant Alert open karo, form fill karo (N/A options available), phir Generate Instant Alert dabao. Output me Heart Attack/Asthma/Diabetes/Hypertension risk percentages aur history milti hai.";
+  if (includesAny(normalized, ["instant", "alert", "risk", "symptom checker"])) {
+    return "Open Instant Alert from the sidebar, fill the form (N/A options are supported), then submit. You will get risk percentages with reasons and history.";
   }
 
-  if (normalized.includes("camera") || normalized.includes("scan") || normalized.includes("ocr")) {
-    return "Camera autofill Profile, Instant Alert aur Food pages me available hai. Button dabao, photo capture/upload karo, app QR + readable text dono se fields parse karne ki koshish karta hai.";
+  if (includesAny(normalized, ["camera", "scan", "ocr", "autofill", "qr", "photo"])) {
+    return "Camera autofill is available in Profile, Instant Alert, and Food pages. Capture or upload an image and the app will try to parse QR and readable text.";
   }
 
-  if (normalized.includes("smartwatch") || normalized.includes("bluetooth") || normalized.includes("steps") || normalized.includes("heart rate")) {
-    return "Settings page me Smartwatch Integration card use karo. Connect dabao (supported browser me Bluetooth request aayega), then sensor values sync karo. Data backend logs me save hota hai.";
+  if (includesAny(normalized, ["smartwatch", "bluetooth", "wearable", "steps", "heart rate", "sync"])) {
+    return "Use the Smartwatch Integration section in Settings. Tap Connect, allow Bluetooth if supported, then sync sensor values to save them in backend logs.";
   }
 
   if (normalized.includes("profile")) {
-    return "Profile page me expanded medical form hai: height, weight, eyesight, disability, chronic conditions, allergies, smoking, alcohol, notes. Scan & Autofill se camera data bhi map ho sakta hai.";
+    return "The Profile page includes personal and medical fields such as height, weight, eyesight, disability, chronic conditions, allergies, smoking, alcohol, and notes. You can also use Scan & Autofill.";
   }
 
-  if (normalized.includes("food")) {
-    return "Food page me Scan Food button se camera analysis hota hai. QR/text mila to dish hint detect hota hai, warna image tone based fallback risk estimate diya jata hai.";
+  if (includesAny(normalized, ["food", "meal", "restaurant", "dish"])) {
+    return "On the Food page, use Scan Food to analyze meals. If QR or readable text is found, dish hints are detected; otherwise a fallback image-based risk estimate is used.";
   }
 
-  if (normalized.includes("login") || normalized.includes("register")) {
-    return "Agar login flow odd lag raha hai, pehle logout karo ya browser storage clear karke retry karo. Default landing page root home hai, auth pages alag routes par hain.";
+  if (includesAny(normalized, ["login", "register", "sign in", "sign up", "auth"])) {
+    return "If login behavior seems stuck, log out and try again, or clear browser storage. The home page is the public landing route and auth pages are separate routes.";
   }
 
-  return "Main app-related help de sakta hoon: login flow, profile form, camera autofill, instant alert, food scan, smartwatch sync. Bas feature ka naam bolo.";
+  return "I can help with login, profile, camera autofill, Instant Alert, food scan, AQI, and smartwatch sync. Tell me which feature you need.";
 };
 
 const initialMessage: ChatMessage = {
   id: 1,
   role: "bot",
-  text: "Main CuraSync assistant hoon. App features use karne me help chahiye to yahi pucho.",
+  text: "I am your CuraSync assistant. Ask me anything about using the app features.",
 };
 
 const HealthChatbot = () => {
@@ -151,8 +153,8 @@ const HealthChatbot = () => {
           </div>
         </section>
       ) : (
-        <Button type="button" size="icon" className="h-12 w-12 rounded-full shadow-soft" onClick={() => setIsOpen(true)} title="Open health assistant">
-          <MessageCircle className="h-5 w-5" />
+        <Button type="button" size="icon" className="h-14 w-14 rounded-full shadow-soft" onClick={() => setIsOpen(true)} title="Open health assistant">
+          <MessageCircle className="h-6 w-6" />
         </Button>
       )}
     </div>
