@@ -26,26 +26,6 @@ import { getAccessToken, getApiBaseUrl } from "@/lib/auth";
 import { apiClient } from "@/lib/apiClient";
 import { pushNotification } from "@/lib/notifications";
 
-type TrendRange = "weekly" | "monthly";
-
-const trendSeries = {
-  weekly: [
-    { label: "Mon", heartRate: 72, steps: 6200 },
-    { label: "Tue", heartRate: 75, steps: 8400 },
-    { label: "Wed", heartRate: 70, steps: 7100 },
-    { label: "Thu", heartRate: 68, steps: 9200 },
-    { label: "Fri", heartRate: 72, steps: 8432 },
-    { label: "Sat", heartRate: 71, steps: 7800 },
-    { label: "Sun", heartRate: 69, steps: 8900 },
-  ],
-  monthly: [
-    { label: "W1", heartRate: 74, steps: 46800 },
-    { label: "W2", heartRate: 72, steps: 50200 },
-    { label: "W3", heartRate: 70, steps: 52600 },
-    { label: "W4", heartRate: 69, steps: 54800 },
-  ],
-} as const;
-
 type SymptomIntensity = "mild" | "moderate" | "severe";
 
 type SymptomPreset = {
@@ -499,7 +479,6 @@ const buildExercisePlan = (hour: number): ExerciseTask[] => {
 
 const Health = () => {
   const [planHour, setPlanHour] = useState<number>(() => new Date().getHours());
-  const [trendRange, setTrendRange] = useState<TrendRange>("weekly");
   const [selectedSymptomId, setSelectedSymptomId] = useState<string | null>(null);
   const [selectedIntensity, setSelectedIntensity] = useState<SymptomIntensity | null>(null);
   const [isExporting, setIsExporting] = useState(false);
@@ -521,10 +500,6 @@ const Health = () => {
   const selectedRisk = conditionRisks.find((risk) => risk.id === selectedRiskId) ?? null;
   const selectedSymptom = symptomPresets.find((symptom) => symptom.id === selectedSymptomId) ?? null;
   const foodOverview = riskOverview?.food ?? null;
-  const trendRows = trendSeries[trendRange];
-
-  const maxHeartRate = Math.max(...trendRows.map((point) => point.heartRate), 1);
-  const maxSteps = Math.max(...trendRows.map((point) => point.steps), 1);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -1020,66 +995,6 @@ const Health = () => {
           </div>
         ) : null}
       </section>
-
-      <motion.section
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.07 }}
-        className="glass-card rounded-3xl border-border/50 p-6"
-      >
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-xl font-semibold">Health Trends</h2>
-          <div className="inline-flex rounded-xl border border-border/60 bg-card/60 p-1">
-            <Button
-              type="button"
-              variant={trendRange === "weekly" ? "default" : "ghost"}
-              className="h-8 rounded-lg px-3 text-xs"
-              onClick={() => setTrendRange("weekly")}
-            >
-              Weekly
-            </Button>
-            <Button
-              type="button"
-              variant={trendRange === "monthly" ? "default" : "ghost"}
-              className="h-8 rounded-lg px-3 text-xs"
-              onClick={() => setTrendRange("monthly")}
-            >
-              Monthly
-            </Button>
-          </div>
-        </div>
-        <div className="rounded-2xl border border-border/60 bg-card/45 p-4">
-          <div className={`grid h-72 items-end gap-3 ${trendRange === "weekly" ? "grid-cols-7" : "grid-cols-4"}`}>
-            {trendRows.map((point) => (
-              <div key={point.label} className="flex h-full flex-col justify-end gap-2">
-                <motion.div
-                  initial={{ height: 0 }}
-                  animate={{ height: `${Math.round((point.heartRate / maxHeartRate) * 40)}%` }}
-                  transition={{ duration: 0.6 }}
-                  className="rounded-t-md bg-health-rose/85"
-                />
-                <motion.div
-                  initial={{ height: 0 }}
-                  animate={{ height: `${Math.round((point.steps / maxSteps) * 58)}%` }}
-                  transition={{ duration: 0.7 }}
-                  className="rounded-t-md bg-health-teal/85"
-                />
-                <p className="text-center text-[11px] font-medium text-muted-foreground">{point.label}</p>
-              </div>
-            ))}
-          </div>
-          <div className="mt-3 flex items-center gap-5 text-xs text-muted-foreground">
-            <span className="inline-flex items-center gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-full bg-health-rose/90" />
-              Heart rate
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-full bg-health-teal/90" />
-              Steps
-            </span>
-          </div>
-        </div>
-      </motion.section>
 
       <AnimatePresence>
         {selectedRisk ? (
