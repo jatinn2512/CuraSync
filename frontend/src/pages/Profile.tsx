@@ -361,7 +361,7 @@ const Profile = () => {
           <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
             <h2 className="flex items-center gap-2 text-xl font-semibold">
               <ShieldPlus className="h-5 w-5 text-health-cyan" />
-              Medical Details (App Supported)
+              Medical Details
             </h2>
             <Button type="button" variant="outline" className="h-9 rounded-lg px-3 text-xs" onClick={() => setShowProfileCamera(true)}>
               <Camera className="h-4 w-4" />

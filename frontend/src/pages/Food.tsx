@@ -987,7 +987,7 @@ const Food = () => {
           {restaurantLoading ? (
             <section className="glass-card rounded-3xl border-border/50 p-6 text-sm text-muted-foreground">Loading restaurants...</section>
           ) : (
-            <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <section className="grid grid-cols-2 gap-3 md:grid-cols-2 xl:grid-cols-3">
               {restaurantCards.length ? (
                 restaurantCards.map((restaurant, index) => (
                   <motion.button
@@ -1003,7 +1003,7 @@ const Food = () => {
                     initial={{ opacity: 0, y: 12 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.04 }}
-                    className="glass-card hover-lift rounded-3xl border-border/50 p-5 text-left"
+                    className="glass-card hover-lift rounded-3xl border-border/50 p-4 text-left sm:p-5"
                   >
                     <div className="mb-4 inline-flex rounded-xl bg-primary/12 px-2.5 py-1 text-xs font-semibold text-primary">{restaurant.cuisine}</div>
                     <h3 className="text-lg font-bold">{restaurant.name}</h3>
