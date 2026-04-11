@@ -678,15 +678,20 @@ const RiskDriftTracker = () => {
               </div>
             </div>
 
-            <div className="flex h-48 items-end gap-1 rounded-xl border border-border/60 bg-card/70 p-3">
-              {chartRows.map((row) => (
-                <div key={`${row.date}-${row.score}`} className="flex h-full flex-1 flex-col justify-end">
-                  <div
-                    className={`min-h-2 rounded-t-md ${row.drift > 0 ? "bg-red-500/75" : row.drift < 0 ? "bg-emerald-500/75" : "bg-amber-500/75"}`}
-                    style={{ height: `${Math.max((row.score / maxChartScore) * 100, 8)}%` }}
-                  />
-                </div>
-              ))}
+            <div className="relative overflow-hidden rounded-xl border border-border/60 bg-gradient-to-b from-card/75 to-card/45 p-3">
+              <div className="pointer-events-none absolute inset-0 opacity-45 [background-image:linear-gradient(to_top,hsl(var(--border))_1px,transparent_1px)] [background-size:100%_25%]" />
+              <div className="relative flex h-48 items-end gap-1">
+                {chartRows.map((row) => (
+                  <div key={`${row.date}-${row.score}`} className="flex h-full flex-1 flex-col justify-end">
+                    <div
+                      className={`min-h-2 rounded-t-md shadow-[0_8px_14px_-12px_rgba(15,23,42,0.9)] ${
+                        row.drift > 0 ? "bg-gradient-to-t from-red-500/60 to-red-500/85" : row.drift < 0 ? "bg-gradient-to-t from-emerald-500/60 to-emerald-500/85" : "bg-gradient-to-t from-amber-500/60 to-amber-500/85"
+                      }`}
+                      style={{ height: `${Math.max((row.score / maxChartScore) * 100, 8)}%` }}
+                    />
+                  </div>
+                ))}
+              </div>
             </div>
 
             <div className="mt-3 grid gap-3 md:grid-cols-2">

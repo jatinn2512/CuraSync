@@ -97,18 +97,18 @@ const Aqi = () => {
         </div>
       </section>
 
-      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         {pollutants.map((pollutant, index) => (
           <motion.article
             key={pollutant.name}
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.05 }}
-            className="glass-card rounded-3xl border-border/50 p-4 text-center"
+            className="glass-card rounded-3xl border-border/50 p-4 text-center sm:p-5"
           >
             <pollutant.icon className={`mx-auto mb-2 h-6 w-6 ${pollutant.color}`} />
             <p className="text-sm font-semibold">{pollutant.name}</p>
-            <p className="mt-1 text-xl font-bold">{pollutant.value}</p>
+            <p className="mt-1 text-lg font-bold sm:text-xl">{pollutant.value}</p>
             <p className="mt-1 text-xs text-muted-foreground">{pollutant.status}</p>
           </motion.article>
         ))}
@@ -117,18 +117,23 @@ const Aqi = () => {
       <section className="grid gap-6 lg:grid-cols-3">
         <article className="glass-card rounded-3xl border-border/50 p-6 lg:col-span-2">
           <h2 className="mb-4 text-xl font-semibold">Hourly AQI Trend</h2>
-          <div className="grid h-52 grid-cols-6 items-end gap-3 rounded-2xl border border-border/60 bg-card/45 p-4">
-            {hourlyTrend.map((item) => (
-              <div key={item.hour} className="flex h-full flex-col justify-end">
-                <motion.div
-                  initial={{ height: 0 }}
-                  animate={{ height: `${Math.round((item.value / hourlyMax) * 100)}%` }}
-                  transition={{ duration: 0.6 }}
-                  className="min-h-4 rounded-t-md bg-health-cyan/85"
-                />
-                <p className="mt-2 text-center text-[11px] text-muted-foreground">{item.hour}</p>
-              </div>
-            ))}
+          <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-b from-card/75 to-card/35 p-4">
+            <div className="pointer-events-none absolute inset-0 opacity-45 [background-image:linear-gradient(to_top,hsl(var(--border))_1px,transparent_1px)] [background-size:100%_22%]" />
+            <div className="relative grid h-56 grid-cols-6 items-end gap-2 sm:gap-3">
+              {hourlyTrend.map((item) => (
+                <div key={item.hour} className="flex h-full flex-col justify-end">
+                  <motion.div
+                    initial={{ height: 0 }}
+                    animate={{ height: `${Math.round((item.value / hourlyMax) * 100)}%` }}
+                    transition={{ duration: 0.6 }}
+                    className="relative min-h-4 rounded-t-md bg-gradient-to-t from-health-cyan/65 via-health-cyan/80 to-health-teal/85 shadow-[0_10px_18px_-12px_rgba(14,165,233,0.9)]"
+                  >
+                    <span className="absolute -top-5 left-1/2 -translate-x-1/2 text-[10px] font-semibold text-muted-foreground">{item.value}</span>
+                  </motion.div>
+                  <p className="mt-2 text-center text-[11px] text-muted-foreground">{item.hour}</p>
+                </div>
+              ))}
+            </div>
           </div>
         </article>
 
