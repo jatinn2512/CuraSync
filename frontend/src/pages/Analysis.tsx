@@ -105,14 +105,17 @@ const Analysis = () => {
             <Flame className="h-5 w-5 text-primary" />
             {tab[0].toUpperCase() + tab.slice(1)} Trend
           </h2>
-          <div className="rounded-2xl border border-border/60 bg-card/55 p-4">
-            <div className="flex h-44 items-end gap-2 sm:gap-3">
+          <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-b from-card/75 to-card/35 p-4">
+            <div className="pointer-events-none absolute inset-0 opacity-45 [background-image:linear-gradient(to_top,hsl(var(--border))_1px,transparent_1px)] [background-size:100%_22%]" />
+            <div className="relative flex h-48 items-end gap-2 sm:gap-3">
               {rows.map((row) => (
                 <div key={row.label} className="flex h-full flex-1 flex-col justify-end">
                   <div
-                    className="min-h-3 rounded-t-md bg-primary/85"
+                    className="relative min-h-3 rounded-t-md bg-gradient-to-t from-primary/65 via-primary/80 to-health-cyan/80 shadow-[0_10px_16px_-12px_rgba(15,118,110,0.95)]"
                     style={{ height: `${Math.round((row[chartKey] / maxValue) * 100)}%` }}
-                  />
+                  >
+                    <span className="absolute -top-5 left-1/2 -translate-x-1/2 text-[10px] font-semibold text-muted-foreground">{row[chartKey]}</span>
+                  </div>
                   <p className="mt-1 text-center text-[11px] font-medium text-muted-foreground">{row.label}</p>
                 </div>
               ))}
@@ -122,7 +125,7 @@ const Analysis = () => {
 
         <article className="glass-card rounded-3xl border-border/50 p-5">
           <h2 className="mb-3 text-lg font-semibold">Comparison with {comparisonKey === "overall" ? "Overall" : "Health"}</h2>
-          <div className="rounded-2xl border border-border/60 bg-card/55 p-4">
+          <div className="rounded-2xl border border-border/60 bg-gradient-to-br from-card/70 to-card/40 p-4">
             <div className="space-y-2">
               {rows.map((row) => (
                 <div key={`cmp-${row.label}`}>
@@ -130,9 +133,9 @@ const Analysis = () => {
                     <span>{row.label}</span>
                     <span>{row[comparisonKey]}</span>
                   </div>
-                  <div className="h-2 rounded-full bg-muted">
+                  <div className="h-2 rounded-full bg-muted/80">
                     <div
-                      className="h-2 rounded-full bg-health-cyan/85"
+                      className="h-2 rounded-full bg-gradient-to-r from-health-cyan/75 to-health-teal/85 shadow-[0_8px_12px_-10px_rgba(6,182,212,0.9)]"
                       style={{ width: `${Math.round((row[comparisonKey] / comparisonMaxValue) * 100)}%` }}
                     />
                   </div>
