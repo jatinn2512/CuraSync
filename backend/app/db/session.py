@@ -16,6 +16,10 @@ class TrackingBase(DeclarativeBase):
     pass
 
 
+CORE_DB_URL = settings.resolved_core_db_url
+TRACKING_DB_URL = settings.resolved_tracking_db_url
+
+
 def _create_engine(db_url: str) -> Engine:
     connect_args = {"check_same_thread": False} if db_url.startswith("sqlite") else {}
     engine = create_engine(db_url, connect_args=connect_args, future=True)
@@ -33,7 +37,7 @@ def _create_engine(db_url: str) -> Engine:
 
 
 def _ensure_sqlite_paths() -> None:
-    for db_url in (settings.core_db_url, settings.tracking_db_url):
+    for db_url in (CORE_DB_URL, TRACKING_DB_URL):
         if not db_url.startswith("sqlite:///"):
             continue
         raw_path = db_url.replace("sqlite:///", "", 1)
@@ -44,8 +48,8 @@ def _ensure_sqlite_paths() -> None:
 
 
 _ensure_sqlite_paths()
-core_engine = _create_engine(settings.core_db_url)
-tracking_engine = _create_engine(settings.tracking_db_url)
+core_engine = _create_engine(CORE_DB_URL)
+tracking_engine = _create_engine(TRACKING_DB_URL)
 
 CoreSessionLocal = sessionmaker(bind=core_engine, autoflush=False, autocommit=False, expire_on_commit=False)
 TrackingSessionLocal = sessionmaker(bind=tracking_engine, autoflush=False, autocommit=False, expire_on_commit=False)
@@ -68,7 +72,7 @@ def get_tracking_db() -> Generator[Session, None, None]:
 
 
 def _apply_sqlite_schema_patches() -> None:
-    if not settings.core_db_url.startswith("sqlite"):
+    if not CORE_DB_URL.startswith("sqlite"):
         return
 
     inspector = inspect(core_engine)
