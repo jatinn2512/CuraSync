@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, Plus, TrendingDown, TrendingUp, UserPlus, Users } from "lucide-react";
+import { AlertTriangle, TrendingDown, TrendingUp, UserPlus, Users } from "lucide-react";
 import { Button } from "@/components/Button";
 
 type StressLevel = "low" | "medium" | "high";
@@ -101,16 +101,19 @@ const normalizePersistedState = (raw: unknown): PersistedState | null => {
   const payload = raw as Partial<PersistedState>;
 
   const profiles = Array.isArray(payload.profiles)
-    ? payload.profiles.filter((item): item is FamilyProfile => Boolean(item && typeof item === "object" && "id" in item && "name" in item))
+    ? payload.profiles.filter(
+        (item): item is FamilyProfile =>
+          Boolean(item && typeof item === "object" && "id" in item && "name" in item && "relation" in item),
+      )
     : [];
-
-  const checkinsByProfile =
-    payload.checkinsByProfile && typeof payload.checkinsByProfile === "object" ? payload.checkinsByProfile : {};
 
   return {
     profiles,
     activeProfileId: payload.activeProfileId ?? null,
-    checkinsByProfile: checkinsByProfile as Record<string, DailyCheckIn[]>,
+    checkinsByProfile:
+      payload.checkinsByProfile && typeof payload.checkinsByProfile === "object"
+        ? (payload.checkinsByProfile as Record<string, DailyCheckIn[]>)
+        : {},
   };
 };
 
@@ -244,7 +247,6 @@ const buildDriftAnalysis = (entries: DailyCheckIn[]): DriftAnalysis => {
     ? previousWindow.reduce((sum, item) => sum + item.score, 0) / previousWindow.length
     : baseline;
   const trendDelta = Number((recentAvg - previousAvg).toFixed(1));
-
   const trendLabel: DriftAnalysis["trendLabel"] = trendDelta >= 3.5 ? "Worsening" : trendDelta <= -3.5 ? "Improving" : "Stable";
 
   const factorTotals: Record<"sleep" | "steps" | "sugar" | "bp" | "stress", number> = {
@@ -286,10 +288,11 @@ const buildDriftAnalysis = (entries: DailyCheckIn[]): DriftAnalysis => {
 
 const RiskDriftTracker = () => {
   const [profiles, setProfiles] = useState<FamilyProfile[]>([createDefaultProfile()]);
-  const [activeProfileId, setActiveProfileId] = useState<string>("self-profile");
+  const [activeProfileId, setActiveProfileId] = useState("self-profile");
   const [checkinsByProfile, setCheckinsByProfile] = useState<Record<string, DailyCheckIn[]>>({});
   const [trendRange, setTrendRange] = useState<"7" | "30">("7");
   const [showAddProfile, setShowAddProfile] = useState(false);
+  const [showOptionalVitals, setShowOptionalVitals] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
 
   const [newProfile, setNewProfile] = useState({
@@ -309,6 +312,12 @@ const RiskDriftTracker = () => {
   });
 
   useEffect(() => {
+    if (!statusMessage) return;
+    const timer = window.setTimeout(() => setStatusMessage(""), 3000);
+    return () => window.clearTimeout(timer);
+  }, [statusMessage]);
+
+  useEffect(() => {
     if (typeof window === "undefined") return;
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) return;
@@ -318,26 +327,25 @@ const RiskDriftTracker = () => {
       if (!parsed) return;
 
       const profileList = parsed.profiles.length ? parsed.profiles : [createDefaultProfile()];
-      const defaultProfile = profileList.find((profile) => profile.id === "self-profile");
-      const withSelf = defaultProfile ? profileList : [createDefaultProfile(), ...profileList];
+      const withSelf = profileList.some((profile) => profile.id === "self-profile")
+        ? profileList
+        : [createDefaultProfile(), ...profileList];
 
       setProfiles(withSelf);
       setCheckinsByProfile(parsed.checkinsByProfile || {});
-
-      const activeId = parsed.activeProfileId && withSelf.some((profile) => profile.id === parsed.activeProfileId) ? parsed.activeProfileId : "self-profile";
-      setActiveProfileId(activeId);
+      setActiveProfileId(
+        parsed.activeProfileId && withSelf.some((profile) => profile.id === parsed.activeProfileId)
+          ? parsed.activeProfileId
+          : "self-profile",
+      );
     } catch {
-      // Ignore corrupt local state and continue with defaults.
+      // Ignore corrupted local data and continue with defaults.
     }
   }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const payload: PersistedState = {
-      profiles,
-      activeProfileId,
-      checkinsByProfile,
-    };
+    const payload: PersistedState = { profiles, activeProfileId, checkinsByProfile };
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
   }, [activeProfileId, checkinsByProfile, profiles]);
 
@@ -346,12 +354,6 @@ const RiskDriftTracker = () => {
     [activeProfileId, profiles],
   );
 
-  useEffect(() => {
-    if (!activeProfile && profiles.length) {
-      setActiveProfileId(profiles[0].id);
-    }
-  }, [activeProfile, profiles]);
-
   const activeCheckins = useMemo(() => {
     if (!activeProfile) return [];
     return [...(checkinsByProfile[activeProfile.id] ?? [])].sort((left, right) => right.date.localeCompare(left.date));
@@ -359,15 +361,12 @@ const RiskDriftTracker = () => {
 
   const drift = useMemo(() => buildDriftAnalysis(activeCheckins), [activeCheckins]);
 
-  const chartRows = useMemo(() => {
-    const limit = Number(trendRange);
-    return drift.points.slice(-limit);
-  }, [drift.points, trendRange]);
-
-  const maxChartScore = useMemo(() => {
-    if (!chartRows.length) return 100;
-    return Math.max(...chartRows.map((row) => row.score), 60);
-  }, [chartRows]);
+  const barsToShow = trendRange === "7" ? 7 : 14;
+  const chartRows = useMemo(() => drift.points.slice(-barsToShow), [barsToShow, drift.points]);
+  const maxChartScore = useMemo(
+    () => (chartRows.length ? Math.max(...chartRows.map((row) => row.score), 60) : 100),
+    [chartRows],
+  );
 
   const trendBadgeClass =
     drift.trendLabel === "Worsening"
@@ -379,11 +378,11 @@ const RiskDriftTracker = () => {
   const addProfile = () => {
     const name = newProfile.name.trim();
     if (!name) {
-      setStatusMessage("Profile name is required.");
+      setStatusMessage("Please enter profile name.");
       return;
     }
     if (!newProfile.consent_flag) {
-      setStatusMessage("Consent is required before adding family profile.");
+      setStatusMessage("Consent is required to add a family profile.");
       return;
     }
 
@@ -419,7 +418,7 @@ const RiskDriftTracker = () => {
       return next;
     });
     setActiveProfileId("self-profile");
-    setStatusMessage(`${activeProfile.name} profile removed.`);
+    setStatusMessage(`${activeProfile.name} removed.`);
   };
 
   const submitCheckIn = () => {
@@ -428,7 +427,7 @@ const RiskDriftTracker = () => {
     const sleepHours = Number.parseFloat(checkinForm.sleep_hours);
     const steps = Number.parseInt(checkinForm.steps, 10);
     if (!Number.isFinite(sleepHours) || sleepHours <= 0 || !Number.isFinite(steps) || steps < 0) {
-      setStatusMessage("Enter valid sleep hours and steps.");
+      setStatusMessage("Please enter valid sleep and step values.");
       return;
     }
 
@@ -447,10 +446,9 @@ const RiskDriftTracker = () => {
     setCheckinsByProfile((previous) => {
       const current = previous[activeProfile.id] ?? [];
       const withoutToday = current.filter((item) => item.date !== dateKey);
-      const next = [entry, ...withoutToday].sort((left, right) => right.date.localeCompare(left.date));
       return {
         ...previous,
-        [activeProfile.id]: next,
+        [activeProfile.id]: [entry, ...withoutToday].sort((left, right) => right.date.localeCompare(left.date)),
       };
     });
 
@@ -461,41 +459,44 @@ const RiskDriftTracker = () => {
     <section className="glass-card rounded-3xl border-border/50 p-6">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-xl font-semibold">Family Mode + Daily Risk Drift Tracker</h2>
-          <p className="mt-1 text-sm text-muted-foreground">Track multiple profiles locally with 30-second daily check-ins.</p>
+          <h2 className="text-xl font-semibold">Family Mode + Risk Drift</h2>
+          <p className="mt-1 text-sm text-muted-foreground">Simple 3-step flow: select profile, add check-in, review trend.</p>
         </div>
         <span className="inline-flex rounded-full border border-border/60 bg-card px-3 py-1 text-xs text-muted-foreground">Offline mode</span>
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[1fr_1.2fr]">
         <article className="rounded-2xl border border-border/60 bg-card/55 p-4">
-          <div className="mb-3 flex items-center justify-between">
-            <p className="inline-flex items-center gap-2 text-sm font-semibold">
-              <Users className="h-4 w-4 text-primary" />
-              Profiles
-            </p>
-            <Button type="button" variant="outline" className="h-8 rounded-lg px-3 text-xs" onClick={() => setShowAddProfile((prev) => !prev)}>
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Step 1: Select profile</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              value={activeProfile?.id ?? ""}
+              onChange={(event) => setActiveProfileId(event.target.value)}
+              className="h-9 min-w-[180px] rounded-lg border border-border/60 bg-card px-3 text-sm outline-none focus:ring-2 focus:ring-primary/25"
+            >
+              {profiles.map((profile) => (
+                <option key={profile.id} value={profile.id}>
+                  {profile.name} ({relationLabelMap[profile.relation]})
+                </option>
+              ))}
+            </select>
+            <Button type="button" variant="outline" className="h-9 rounded-lg px-3 text-xs" onClick={() => setShowAddProfile((prev) => !prev)}>
               <UserPlus className="h-3.5 w-3.5" />
-              Add
+              Add profile
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="h-9 rounded-lg px-3 text-xs"
+              onClick={removeActiveProfile}
+              disabled={!activeProfile || activeProfile.relation === "self"}
+            >
+              Remove
             </Button>
           </div>
 
-          <div className="mb-3 flex flex-wrap gap-2">
-            {profiles.map((profile) => (
-              <Button
-                key={profile.id}
-                type="button"
-                variant={activeProfile?.id === profile.id ? "default" : "outline"}
-                className="h-8 rounded-lg px-3 text-xs"
-                onClick={() => setActiveProfileId(profile.id)}
-              >
-                {profile.name}
-              </Button>
-            ))}
-          </div>
-
           {activeProfile ? (
-            <div className="rounded-xl border border-border/60 bg-card/70 p-3 text-xs text-muted-foreground">
+            <div className="mt-3 rounded-xl border border-border/60 bg-card/70 p-3 text-xs text-muted-foreground">
               <p>
                 <span className="font-semibold text-foreground">Relation:</span> {relationLabelMap[activeProfile.relation]}
               </p>
@@ -505,11 +506,6 @@ const RiskDriftTracker = () => {
               <p className="mt-1">
                 <span className="font-semibold text-foreground">Baseline:</span> {activeProfile.baseline_conditions || "Not provided"}
               </p>
-              {activeProfile.relation !== "self" ? (
-                <Button type="button" variant="outline" className="mt-3 h-7 rounded-md px-2 text-[11px]" onClick={removeActiveProfile}>
-                  Remove profile
-                </Button>
-              ) : null}
             </div>
           ) : null}
 
@@ -518,7 +514,7 @@ const RiskDriftTracker = () => {
               <input
                 value={newProfile.name}
                 onChange={(event) => setNewProfile((prev) => ({ ...prev, name: event.target.value }))}
-                placeholder="Name"
+                placeholder="Profile name"
                 className="h-9 w-full rounded-lg border border-border/60 bg-card px-3 text-sm outline-none focus:ring-2 focus:ring-primary/25"
               />
               <div className="grid gap-2 sm:grid-cols-2">
@@ -556,10 +552,10 @@ const RiskDriftTracker = () => {
                   checked={newProfile.consent_flag}
                   onChange={(event) => setNewProfile((prev) => ({ ...prev, consent_flag: event.target.checked }))}
                 />
-                Consent available for this profile
+                Consent available
               </label>
               <Button type="button" className="h-8 rounded-lg px-3 text-xs" onClick={addProfile}>
-                <Plus className="h-3.5 w-3.5" />
+                <Users className="h-3.5 w-3.5" />
                 Save profile
               </Button>
             </div>
@@ -567,7 +563,7 @@ const RiskDriftTracker = () => {
         </article>
 
         <article className="rounded-2xl border border-border/60 bg-card/55 p-4">
-          <p className="mb-3 text-sm font-semibold">Daily 30-second check-in</p>
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Step 2: Daily check-in</p>
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="space-y-1 text-xs text-muted-foreground">
               <span>Sleep hours</span>
@@ -577,7 +573,7 @@ const RiskDriftTracker = () => {
                 step={0.5}
                 value={checkinForm.sleep_hours}
                 onChange={(event) => setCheckinForm((prev) => ({ ...prev, sleep_hours: event.target.value }))}
-                className="h-9 w-full rounded-lg border border-border/60 bg-card px-3 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/25"
+                className="h-9 w-full rounded-lg border border-border/60 bg-card px-3 text-sm outline-none focus:ring-2 focus:ring-primary/25"
               />
             </label>
             <label className="space-y-1 text-xs text-muted-foreground">
@@ -587,98 +583,119 @@ const RiskDriftTracker = () => {
                 min={0}
                 value={checkinForm.steps}
                 onChange={(event) => setCheckinForm((prev) => ({ ...prev, steps: event.target.value }))}
-                className="h-9 w-full rounded-lg border border-border/60 bg-card px-3 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/25"
+                className="h-9 w-full rounded-lg border border-border/60 bg-card px-3 text-sm outline-none focus:ring-2 focus:ring-primary/25"
               />
-            </label>
-            <label className="space-y-1 text-xs text-muted-foreground">
-              <span>Fasting sugar (optional)</span>
-              <input
-                type="number"
-                min={0}
-                value={checkinForm.fasting_sugar}
-                onChange={(event) => setCheckinForm((prev) => ({ ...prev, fasting_sugar: event.target.value }))}
-                className="h-9 w-full rounded-lg border border-border/60 bg-card px-3 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/25"
-              />
-            </label>
-            <label className="space-y-1 text-xs text-muted-foreground">
-              <span>Systolic BP (optional)</span>
-              <input
-                type="number"
-                min={0}
-                value={checkinForm.systolic_bp}
-                onChange={(event) => setCheckinForm((prev) => ({ ...prev, systolic_bp: event.target.value }))}
-                className="h-9 w-full rounded-lg border border-border/60 bg-card px-3 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/25"
-              />
-            </label>
-            <label className="space-y-1 text-xs text-muted-foreground sm:col-span-2">
-              <span>Stress level</span>
-              <div className="inline-flex rounded-lg border border-border/60 bg-card/70 p-1">
-                {(["low", "medium", "high"] as StressLevel[]).map((level) => (
-                  <Button
-                    key={level}
-                    type="button"
-                    variant={checkinForm.stress_level === level ? "default" : "ghost"}
-                    className="h-7 rounded-md px-3 text-[11px]"
-                    onClick={() => setCheckinForm((prev) => ({ ...prev, stress_level: level }))}
-                  >
-                    {level}
-                  </Button>
-                ))}
-              </div>
             </label>
           </div>
+
+          <div className="mt-3">
+            <p className="mb-1 text-xs text-muted-foreground">Stress level</p>
+            <div className="inline-flex rounded-lg border border-border/60 bg-card/70 p-1">
+              {(["low", "medium", "high"] as StressLevel[]).map((level) => (
+                <Button
+                  key={level}
+                  type="button"
+                  variant={checkinForm.stress_level === level ? "default" : "ghost"}
+                  className="h-7 rounded-md px-3 text-[11px]"
+                  onClick={() => setCheckinForm((prev) => ({ ...prev, stress_level: level }))}
+                >
+                  {level}
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-3">
+            <Button type="button" variant="outline" className="h-7 rounded-md px-3 text-[11px]" onClick={() => setShowOptionalVitals((prev) => !prev)}>
+              {showOptionalVitals ? "Hide optional vitals" : "Add optional vitals"}
+            </Button>
+            {showOptionalVitals ? (
+              <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                <label className="space-y-1 text-xs text-muted-foreground">
+                  <span>Fasting sugar</span>
+                  <input
+                    type="number"
+                    min={0}
+                    value={checkinForm.fasting_sugar}
+                    onChange={(event) => setCheckinForm((prev) => ({ ...prev, fasting_sugar: event.target.value }))}
+                    className="h-9 w-full rounded-lg border border-border/60 bg-card px-3 text-sm outline-none focus:ring-2 focus:ring-primary/25"
+                  />
+                </label>
+                <label className="space-y-1 text-xs text-muted-foreground">
+                  <span>Systolic BP</span>
+                  <input
+                    type="number"
+                    min={0}
+                    value={checkinForm.systolic_bp}
+                    onChange={(event) => setCheckinForm((prev) => ({ ...prev, systolic_bp: event.target.value }))}
+                    className="h-9 w-full rounded-lg border border-border/60 bg-card px-3 text-sm outline-none focus:ring-2 focus:ring-primary/25"
+                  />
+                </label>
+              </div>
+            ) : null}
+          </div>
+
           <Button type="button" className="mt-3 h-9 rounded-lg px-4 text-xs" onClick={submitCheckIn}>
-            Save check-in
+            Save today check-in
           </Button>
           {statusMessage ? <p className="mt-2 text-xs text-muted-foreground">{statusMessage}</p> : null}
         </article>
       </div>
 
       <article className="mt-4 rounded-2xl border border-border/60 bg-card/55 p-4">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm font-semibold">Risk Drift Trend</p>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Step 3: Trend view</p>
           <div className="inline-flex rounded-lg border border-border/60 bg-card/70 p-1">
             <Button type="button" variant={trendRange === "7" ? "default" : "ghost"} className="h-7 rounded-md px-3 text-[11px]" onClick={() => setTrendRange("7")}>
-              7 days
+              Last 7 days
             </Button>
             <Button type="button" variant={trendRange === "30" ? "default" : "ghost"} className="h-7 rounded-md px-3 text-[11px]" onClick={() => setTrendRange("30")}>
-              30 days
+              Last 30 days
             </Button>
           </div>
         </div>
 
         {chartRows.length ? (
           <>
-            <div className="mb-3 flex flex-wrap items-center gap-2">
-              <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${trendBadgeClass}`}>
-                {drift.trendLabel === "Improving" ? <TrendingDown className="h-3.5 w-3.5" /> : drift.trendLabel === "Worsening" ? <TrendingUp className="h-3.5 w-3.5" /> : <AlertTriangle className="h-3.5 w-3.5" />}
-                {drift.trendLabel}
-              </span>
-              <span className="text-xs text-muted-foreground">
-                Latest score {drift.latestScore.toFixed(1)} | Drift {drift.latestDrift >= 0 ? "+" : ""}
-                {drift.latestDrift.toFixed(1)} vs baseline {drift.baseline.toFixed(1)}
-              </span>
+            <div className="mb-3 grid gap-2 sm:grid-cols-3">
+              <div className="rounded-xl border border-border/60 bg-card/70 p-3">
+                <p className="text-[11px] text-muted-foreground">Latest score</p>
+                <p className="text-lg font-semibold">{drift.latestScore.toFixed(1)}</p>
+              </div>
+              <div className="rounded-xl border border-border/60 bg-card/70 p-3">
+                <p className="text-[11px] text-muted-foreground">Drift vs baseline</p>
+                <p className={`text-lg font-semibold ${drift.latestDrift > 0 ? "text-red-600" : drift.latestDrift < 0 ? "text-emerald-700" : ""}`}>
+                  {drift.latestDrift >= 0 ? "+" : ""}
+                  {drift.latestDrift.toFixed(1)}
+                </p>
+              </div>
+              <div className="rounded-xl border border-border/60 bg-card/70 p-3">
+                <p className="text-[11px] text-muted-foreground">Trend</p>
+                <p className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-semibold ${trendBadgeClass}`}>
+                  {drift.trendLabel === "Improving" ? <TrendingDown className="h-3.5 w-3.5" /> : drift.trendLabel === "Worsening" ? <TrendingUp className="h-3.5 w-3.5" /> : <AlertTriangle className="h-3.5 w-3.5" />}
+                  {drift.trendLabel}
+                </p>
+              </div>
             </div>
 
-            <div className="grid h-52 grid-cols-7 items-end gap-2 rounded-xl border border-border/60 bg-card/70 p-3">
-              {chartRows.slice(-7).map((row) => (
-                <div key={row.date} className="flex h-full flex-col justify-end">
+            <div className="flex h-48 items-end gap-1 rounded-xl border border-border/60 bg-card/70 p-3">
+              {chartRows.map((row) => (
+                <div key={`${row.date}-${row.score}`} className="flex h-full flex-1 flex-col justify-end">
                   <div
                     className={`min-h-2 rounded-t-md ${row.drift > 0 ? "bg-red-500/75" : row.drift < 0 ? "bg-emerald-500/75" : "bg-amber-500/75"}`}
                     style={{ height: `${Math.max((row.score / maxChartScore) * 100, 8)}%` }}
                   />
-                  <p className="mt-1 text-center text-[10px] text-muted-foreground">{new Date(row.date).toLocaleDateString("en-US", { day: "numeric", month: "short" })}</p>
                 </div>
               ))}
             </div>
 
             <div className="mt-3 grid gap-3 md:grid-cols-2">
               <div className="rounded-xl border border-border/60 bg-card/70 p-3 text-xs text-muted-foreground">
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide">Top risk factors this week</p>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide">Top factors this week</p>
                 {drift.topFactors.length ? (
                   drift.topFactors.map((factor) => (
                     <p key={factor.key}>
-                      <span className="font-semibold text-foreground">{factor.label}:</span> +{factor.value.toFixed(1)} impact points
+                      <span className="font-semibold text-foreground">{factor.label}:</span> +{factor.value.toFixed(1)} points
                     </p>
                   ))
                 ) : (
@@ -689,7 +706,7 @@ const RiskDriftTracker = () => {
                 <p className="mb-2 text-xs font-semibold uppercase tracking-wide">Recent check-ins</p>
                 {activeCheckins.slice(0, 3).map((entry) => (
                   <p key={entry.id}>
-                    {new Date(entry.date).toLocaleDateString("en-US", { day: "numeric", month: "short" })}: {entry.sleep_hours}h sleep, {entry.steps} steps, stress {entry.stress_level}
+                    {new Date(entry.date).toLocaleDateString("en-US", { day: "numeric", month: "short" })}: {entry.sleep_hours}h, {entry.steps} steps, stress {entry.stress_level}
                   </p>
                 ))}
               </div>
@@ -697,7 +714,7 @@ const RiskDriftTracker = () => {
           </>
         ) : (
           <div className="rounded-xl border border-dashed border-border/70 bg-card/60 p-4 text-sm text-muted-foreground">
-            Add daily check-ins to see drift trend and top risk factors.
+            Save a daily check-in to unlock trend insights.
           </div>
         )}
       </article>
