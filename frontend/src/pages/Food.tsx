@@ -342,6 +342,7 @@ const Food = () => {
   const [showFoodCamera, setShowFoodCamera] = useState(false);
   const [isFoodScanProcessing, setIsFoodScanProcessing] = useState(false);
   const [foodScanResult, setFoodScanResult] = useState<FoodScanResult | null>(null);
+  const [showAllSwapOptions, setShowAllSwapOptions] = useState(false);
 
   const addMeal = () => {
     if (!newMeal.items.trim()) return;
@@ -513,6 +514,10 @@ const Food = () => {
 
   const selectedDish = selectedRestaurant?.dishes.find((dish) => dish.id === selectedDishId) ?? null;
 
+  useEffect(() => {
+    setShowAllSwapOptions(false);
+  }, [selectedDishId, selectedRestaurantId]);
+
   const mealSwapSuggestions = useMemo(() => {
     if (!selectedRestaurant || !selectedDish || selectedDish.alert === "green") {
       return [];
@@ -549,6 +554,11 @@ const Food = () => {
 
     return ranked.slice(0, 3);
   }, [dietPreference, selectedDish, selectedRestaurant]);
+
+  const visibleMealSwapSuggestions = useMemo(
+    () => (showAllSwapOptions ? mealSwapSuggestions : mealSwapSuggestions.slice(0, 1)),
+    [mealSwapSuggestions, showAllSwapOptions],
+  );
 
   const restaurantCards = useMemo(() => {
     if (dietPreference !== "veg") {
@@ -630,6 +640,7 @@ const Food = () => {
     setSuggestions([]);
     setPendingChoice(null);
     setChooseResult(null);
+    setShowAllSwapOptions(false);
   };
 
   const stageDishChoice = (dish: DishCatalog) => {
@@ -1130,10 +1141,11 @@ const Food = () => {
 
                                           {selectedDishId === dish.id && dish.alert !== "green" ? (
                                             <div className="rounded-lg border border-primary/30 bg-primary/10 p-2 text-[11px] text-muted-foreground">
-                                              <p className="mb-1 font-semibold text-foreground">Meal Swap Engine</p>
+                                              <p className="mb-1 font-semibold text-foreground">Safer Swap Suggestion</p>
                                               {mealSwapSuggestions.length ? (
-                                                <div className="space-y-2">
-                                                  {mealSwapSuggestions.map((swap) => (
+                                                <>
+                                                  <div className="space-y-2">
+                                                    {visibleMealSwapSuggestions.map((swap) => (
                                                     <div key={`swap-mobile-${swap.dish.id}`} className="rounded-md border border-border/60 bg-card/70 p-2">
                                                       <div className="flex items-center justify-between gap-2">
                                                         <p className="text-[11px] font-semibold text-foreground">{swap.dish.name}</p>
@@ -1141,11 +1153,7 @@ const Food = () => {
                                                           {alertMeta[swap.dish.alert].label}
                                                         </span>
                                                       </div>
-                                                      <p className="mt-1">
-                                                        Calories {swap.caloriesDelta >= 0 ? "+" : ""}
-                                                        {swap.caloriesDelta} | Sodium {swap.sodiumDelta >= 0 ? "+" : ""}
-                                                        {swap.sodiumDelta} mg
-                                                      </p>
+                                                      <p className="mt-1">Better by: sodium {swap.sodiumDelta < 0 ? `${Math.abs(swap.sodiumDelta)} mg lower` : `${swap.sodiumDelta} mg`}</p>
                                                       <Button
                                                         type="button"
                                                         variant="outline"
@@ -1155,8 +1163,19 @@ const Food = () => {
                                                         Choose this swap
                                                       </Button>
                                                     </div>
-                                                  ))}
-                                                </div>
+                                                    ))}
+                                                  </div>
+                                                  {mealSwapSuggestions.length > 1 ? (
+                                                    <Button
+                                                      type="button"
+                                                      variant="ghost"
+                                                      className="mt-2 h-6 rounded-md px-2 text-[10px]"
+                                                      onClick={() => setShowAllSwapOptions((prev) => !prev)}
+                                                    >
+                                                      {showAllSwapOptions ? "Show fewer options" : `Show ${mealSwapSuggestions.length - 1} more option(s)`}
+                                                    </Button>
+                                                  ) : null}
+                                                </>
                                               ) : (
                                                 <p>No clearly safer same-menu alternative found for this dish.</p>
                                               )}
@@ -1243,10 +1262,11 @@ const Food = () => {
 
                                     {selectedDish.alert !== "green" ? (
                                       <div className="mt-3 rounded-xl border border-primary/30 bg-primary/10 p-3 text-xs">
-                                        <p className="mb-2 font-semibold text-foreground">Meal Swap Engine</p>
+                                        <p className="mb-2 font-semibold text-foreground">Safer Swap Suggestion</p>
                                         {mealSwapSuggestions.length ? (
-                                          <div className="space-y-2">
-                                            {mealSwapSuggestions.map((swap) => (
+                                          <>
+                                            <div className="space-y-2">
+                                              {visibleMealSwapSuggestions.map((swap) => (
                                               <div key={`swap-desktop-${swap.dish.id}`} className="rounded-lg border border-border/60 bg-card/80 p-2.5 text-muted-foreground">
                                                 <div className="flex items-center justify-between gap-2">
                                                   <p className="text-xs font-semibold text-foreground">{swap.dish.name}</p>
@@ -1255,14 +1275,8 @@ const Food = () => {
                                                   </span>
                                                 </div>
                                                 <p className="mt-1">
-                                                  Calories {swap.caloriesDelta >= 0 ? "+" : ""}
-                                                  {swap.caloriesDelta} | Sodium {swap.sodiumDelta >= 0 ? "+" : ""}
-                                                  {swap.sodiumDelta} mg | Sugar {swap.sugarDelta >= 0 ? "+" : ""}
-                                                  {swap.sugarDelta} g
-                                                </p>
-                                                <p className="mt-1">
-                                                  Fat {swap.fatDelta >= 0 ? "+" : ""}
-                                                  {swap.fatDelta} g | Similarity {(swap.similarityScore * 100).toFixed(0)}%
+                                                  Sodium change: {swap.sodiumDelta < 0 ? `-${Math.abs(swap.sodiumDelta)} mg` : `+${swap.sodiumDelta} mg`} | Calories{" "}
+                                                  {swap.caloriesDelta < 0 ? `-${Math.abs(swap.caloriesDelta)}` : `+${swap.caloriesDelta}`}
                                                 </p>
                                                 <Button
                                                   type="button"
@@ -1273,8 +1287,19 @@ const Food = () => {
                                                   Choose this swap
                                                 </Button>
                                               </div>
-                                            ))}
-                                          </div>
+                                              ))}
+                                            </div>
+                                            {mealSwapSuggestions.length > 1 ? (
+                                              <Button
+                                                type="button"
+                                                variant="ghost"
+                                                className="mt-2 h-7 rounded-md px-2 text-[11px]"
+                                                onClick={() => setShowAllSwapOptions((prev) => !prev)}
+                                              >
+                                                {showAllSwapOptions ? "Show fewer options" : `Show ${mealSwapSuggestions.length - 1} more option(s)`}
+                                              </Button>
+                                            ) : null}
+                                          </>
                                         ) : (
                                           <p className="text-muted-foreground">No clearly safer same-menu alternative found for this dish.</p>
                                         )}
