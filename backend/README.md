@@ -7,42 +7,40 @@
 .\start-backend.ps1
 ```
 
-## Database (MySQL Workbench)
+## Database (Supabase Postgres)
 
-The backend is configured to run on MySQL by default.
+The backend is configured to run on Supabase Postgres.
 
-1. Create a MySQL Workbench connection (for example, `curasync`).
-2. Create both databases:
-
-```sql
-CREATE DATABASE IF NOT EXISTS curasync_core CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE DATABASE IF NOT EXISTS curasync_tracking CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-```
-
-3. Add a `.env` file in `backend/`:
+1. In `backend/.env`, use:
 
 ```env
-DATABASE_BACKEND=mysql
-MYSQL_HOST=127.0.0.1
-MYSQL_PORT=3306
-MYSQL_USER=root
-MYSQL_PASSWORD=your_mysql_password
-MYSQL_CORE_DATABASE=curasync_core
-MYSQL_TRACKING_DATABASE=curasync_tracking
+DATABASE_BACKEND=postgres
+SUPABASE_DB_URL=postgresql+psycopg://postgres:your_supabase_db_password@db.your_project_ref.supabase.co:5432/postgres
 ```
 
-Optional SQLite fallback:
+2. Install backend dependencies (includes Postgres driver):
+
+```bash
+pip install -r requirements.txt
+```
+
+3. Start backend:
+
+```bash
+.\start-backend.ps1
+```
+
+Optional explicit split URLs (usually not needed):
 
 ```env
-DATABASE_BACKEND=sqlite
-SQLITE_CORE_DB_URL=sqlite:///./data/curasync_core.db
-SQLITE_TRACKING_DB_URL=sqlite:///./data/curasync_tracking.db
+CORE_DB_URL=postgresql+psycopg://postgres:your_supabase_db_password@db.your_project_ref.supabase.co:5432/postgres
+TRACKING_DB_URL=postgresql+psycopg://postgres:your_supabase_db_password@db.your_project_ref.supabase.co:5432/postgres
 ```
 
 ## What Is Added
 
 - Real auth flow (register/login/refresh/logout/me), no mock login.
-- Dual-database setup (`core` + `tracking`) with MySQL as default backend.
+- Dual-session setup (`core` + `tracking`) targeting Supabase Postgres.
 - Plan + subscription APIs (Current/Pro).
 - AQI snapshot APIs.
 - Risk/health tracking APIs (sleep/activity/vitals/events).
@@ -55,3 +53,5 @@ SQLITE_TRACKING_DB_URL=sqlite:///./data/curasync_tracking.db
 - `/api/aqi/*`
 - `/api/risk/*`
 - `/api/restaurant/*`
+
+# readme just about cmnds etc 
