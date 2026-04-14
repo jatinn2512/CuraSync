@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import type { LucideIcon } from "lucide-react";
 import {
   Activity,
+  ArrowLeft,
   AlertTriangle,
   CheckCircle2,
   ChevronRight,
@@ -304,6 +305,17 @@ const buildPlaceholderConditionRisks = (): ConditionRisk[] => [
     last30Days: ["No AQI exposure trend available yet."],
     recommendations: ["Enable AQI tracking and keep location access on."],
   },
+  {
+    id: "stroke",
+    name: "Stroke",
+    icon: AlertTriangle,
+    level: "Low",
+    probability: 0.2,
+    summary: "Not enough risk signals yet for stroke vulnerability trends.",
+    reasons: ["Add BP, stress, activity, and heart trend data for better stroke-risk screening."],
+    last30Days: ["Stroke-related trend is waiting for more BP and activity logs."],
+    recommendations: ["Track blood pressure regularly.", "Keep stress and sleep in check."],
+  },
 ];
 
 const normalizeActivity = (value: string | undefined): "low" | "moderate" | "high" => {
@@ -318,6 +330,15 @@ const levelToProbability = (level: RiskLevel): number => {
   if (level === "Medium") return 0.55;
   return 0.25;
 };
+
+const riskLevelRank: Record<RiskLevel, number> = {
+  Low: 1,
+  Medium: 2,
+  High: 3,
+};
+
+const getHigherRiskLevel = (left: RiskLevel, right: RiskLevel): RiskLevel =>
+  riskLevelRank[left] >= riskLevelRank[right] ? left : right;
 
 const buildRiskPayload = (
   age: number | undefined,
@@ -375,6 +396,14 @@ const buildConditionRisksFromApi = (risk: HealthRiskApiResponse, overview: RiskO
   const foodSummary = overview?.food?.latest_item
     ? `Latest food: ${overview.food.latest_item} (${overview.food.latest_alert ?? "N/A"} alert)`
     : "No restaurant food analysis logged yet.";
+  const hypertensionProbability = Math.min(Math.max(risk.conditions.hypertension.score / 10, 0), 1);
+  const strokeLevel = getHigherRiskLevel(risk.conditions.heart.level, risk.conditions.hypertension.level);
+  const strokeProbability = Number(
+    Math.min(
+      0.95,
+      Math.max((risk.conditions.heart.probability + hypertensionProbability) / 2, levelToProbability(strokeLevel)),
+    ).toFixed(2),
+  );
 
   return [
     {
@@ -393,7 +422,7 @@ const buildConditionRisksFromApi = (risk: HealthRiskApiResponse, overview: RiskO
       name: "Hypertension",
       icon: AlertTriangle,
       level: risk.conditions.hypertension.level,
-      probability: Math.min(Math.max(risk.conditions.hypertension.score / 10, 0), 1),
+      probability: hypertensionProbability,
       summary: risk.conditions.hypertension.reasons[0] || "Rule-based hypertension score generated.",
       reasons: risk.conditions.hypertension.reasons.length
         ? risk.conditions.hypertension.reasons
@@ -433,6 +462,24 @@ const buildConditionRisksFromApi = (risk: HealthRiskApiResponse, overview: RiskO
       reasons: [risk.conditions.aqi_risk.advice],
       last30Days: ["Respiratory exposure risk uses AQI trend + overall risk.", vitalsSummary, foodSummary],
       recommendations: ["Use mask on poor AQI days.", "Prefer indoor workouts on high AQI.", "Check AQI before commute."],
+    },
+    {
+      id: "stroke",
+      name: "Stroke",
+      icon: AlertTriangle,
+      level: strokeLevel,
+      probability: strokeProbability,
+      summary: "Composite screening from BP, heart-risk, and stress-associated activity trends.",
+      reasons: [
+        ...risk.conditions.hypertension.reasons.slice(0, 1),
+        ...risk.conditions.heart.reasons.slice(0, 1),
+      ].filter(Boolean),
+      last30Days: [vitalsSummary, activitySummary, sleepSummary],
+      recommendations: [
+        "Keep BP checks consistent at the same time daily.",
+        "Avoid missed sleep and unmanaged high stress days.",
+        "Consult clinician quickly for sudden numbness, speech, or facial weakness.",
+      ],
     },
   ];
 };
@@ -481,6 +528,7 @@ const Health = () => {
   const [planHour, setPlanHour] = useState<number>(() => new Date().getHours());
   const [selectedSymptomId, setSelectedSymptomId] = useState<string | null>(null);
   const [selectedIntensity, setSelectedIntensity] = useState<SymptomIntensity | null>(null);
+  const [isSymptomModalOpen, setIsSymptomModalOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [exportError, setExportError] = useState("");
   const [exportSuccess, setExportSuccess] = useState("");
@@ -645,15 +693,18 @@ const Health = () => {
   const handleSymptomSelect = (symptomId: string) => {
     setSelectedSymptomId(symptomId);
     setSelectedIntensity(null);
+    setIsSymptomModalOpen(true);
   };
 
   const handleIntensitySelect = (intensity: SymptomIntensity) => {
     setSelectedIntensity(intensity);
+    setIsSymptomModalOpen(false);
   };
 
   const clearSymptomSelection = () => {
     setSelectedSymptomId(null);
     setSelectedIntensity(null);
+    setIsSymptomModalOpen(false);
   };
 
   const markExerciseCompleted = (taskId: string) => {
@@ -714,7 +765,23 @@ const Health = () => {
   };
 
   return (
-    <AppLayout title="Health" subtitle="Monitor vitals, track symptoms, and get AI-backed recommendations.">
+    <AppLayout hideHeader>
+      <section className="space-y-2">
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="text-3xl font-bold tracking-tight lg:text-4xl">Health</h1>
+          <Button type="button" className="h-9 rounded-xl bg-primary px-4 text-primary-foreground" onClick={() => setIsExportModalOpen(true)} disabled={isExporting}>
+            <Download className="h-4 w-4" />
+            {isExporting ? "Exporting..." : "Export"}
+          </Button>
+        </div>
+        {exportError ? (
+          <div className="w-full rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-500">{exportError}</div>
+        ) : null}
+        {exportSuccess ? (
+          <div className="w-full rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm text-green-500">{exportSuccess}</div>
+        ) : null}
+      </section>
+
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
         {metrics.map((metric, index) => (
           <motion.article
@@ -737,42 +804,23 @@ const Health = () => {
         ))}
       </section>
 
-      <section className="glass-card rounded-3xl border-border/50 p-6">
-        <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-          <div>
-            <h2 className="text-xl font-semibold">Export Your Data</h2>
-            <p className="text-sm text-muted-foreground">Download complete, weekly, or this month health data in PDF format.</p>
-          </div>
-          <Button type="button" className="h-10 rounded-xl bg-primary px-4 text-primary-foreground" onClick={() => setIsExportModalOpen(true)} disabled={isExporting}>
-            <Download className="h-4 w-4" />
-            {isExporting ? "Exporting..." : "Export Data"}
-          </Button>
-        </div>
-        {exportError && (
-          <div className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-500">{exportError}</div>
-        )}
-        {exportSuccess && (
-          <div className="mt-4 rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm text-green-500">{exportSuccess}</div>
-        )}
-      </section>
-
-      <section className="grid gap-6 lg:grid-cols-[340px,1fr]">
+      <section className="grid gap-6">
         <article className="glass-card rounded-3xl border-border/50 p-6">
           <h2 className="mb-4 flex items-center gap-2 text-xl font-semibold">
             <AlertTriangle className="h-5 w-5 text-primary" />
             Disease Risk Alerts
           </h2>
           <p className="mb-3 text-xs text-muted-foreground">{isRiskLoading ? "Preparing personalized risk..." : riskInfoMessage}</p>
-          <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3 xl:grid-cols-3">
             {conditionRisks.map((risk) => (
               <button
                 key={risk.id}
                 type="button"
-                className="flex w-full items-center justify-between rounded-2xl border border-border/60 bg-card/55 px-4 py-3 text-left transition-colors hover:border-primary/50"
+                className="flex h-full min-h-[90px] w-full items-center justify-between rounded-2xl border border-border/60 bg-card/55 px-4 py-3 text-left transition-colors hover:border-primary/50"
                 onClick={() => setSelectedRiskId(risk.id)}
               >
                 <span>
-                  <span className="block text-sm font-semibold">{risk.name}</span>
+                  <span className="block text-[13px] font-semibold sm:text-sm">{risk.name}</span>
                   <span className={`mt-1 inline-flex rounded-full border px-2 py-0.5 text-[11px] ${levelBadgeClass(risk.level)}`}>
                     {risk.level}
                   </span>
@@ -790,55 +838,34 @@ const Health = () => {
           </h2>
 
           <div className="space-y-4 rounded-2xl border border-border/60 bg-card/45 p-4">
-            <div>
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Select symptom</p>
-              <div className="flex flex-wrap gap-2">
-                {symptomPresets.map((symptom) => (
-                  <Button
-                    key={symptom.id}
-                    type="button"
-                    variant={selectedSymptomId === symptom.id ? "default" : "outline"}
-                    className="h-8 rounded-lg px-3 text-xs"
-                    onClick={() => handleSymptomSelect(symptom.id)}
-                  >
-                    {symptom.label}
-                  </Button>
-                ))}
-              </div>
+            <div className="flex flex-wrap gap-2">
+              {symptomPresets.map((symptom) => (
+                <Button
+                  key={symptom.id}
+                  type="button"
+                  variant={selectedSymptomId === symptom.id ? "default" : "outline"}
+                  className="h-8 rounded-lg px-3 text-xs"
+                  onClick={() => handleSymptomSelect(symptom.id)}
+                >
+                  {symptom.label}
+                </Button>
+              ))}
             </div>
-
-            {selectedSymptom ? (
-              <div>
-                <p className="mb-2 text-sm font-semibold">{selectedSymptom.followupQuestion}</p>
-                <div className="flex flex-wrap gap-2">
-                  {selectedSymptom.intensityOptions.map((option) => (
-                    <Button
-                      key={option.id}
-                      type="button"
-                      variant={selectedIntensity === option.id ? "default" : "outline"}
-                      className="h-8 rounded-lg px-3 text-xs"
-                      onClick={() => handleIntensitySelect(option.id)}
-                    >
-                      {option.label}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-            ) : null}
 
             {selectedSymptom && selectedIntensity ? (
               <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 p-3">
                 <div className="mb-2 flex items-center justify-between gap-2">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Suggestions</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
+                    {selectedSymptom.label} ({selectedIntensity})
+                  </p>
                   <Button
                     type="button"
                     variant="ghost"
-                    size="icon"
-                    className="h-7 w-7 rounded-md text-emerald-800 hover:bg-emerald-500/20"
+                    className="h-7 rounded-md px-2 text-[11px] text-emerald-800 hover:bg-emerald-500/20"
                     onClick={clearSymptomSelection}
-                    aria-label="Clear symptom suggestions"
                   >
-                    <X className="h-4 w-4" />
+                    <ArrowLeft className="h-3.5 w-3.5" />
+                    Back
                   </Button>
                 </div>
                 <ul className="space-y-1 text-sm text-emerald-800">
@@ -850,11 +877,7 @@ const Health = () => {
                   ))}
                 </ul>
               </div>
-            ) : (
-              <p className="text-xs text-muted-foreground">
-                Pick a symptom and intensity to get quick guidance like rest, hydration, and activity advice.
-              </p>
-            )}
+            ) : null}
           </div>
         </motion.article>
       </section>
@@ -961,6 +984,52 @@ const Health = () => {
       </section>
 
       <AnimatePresence>
+        {isSymptomModalOpen && selectedSymptom ? (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4"
+            onClick={() => setIsSymptomModalOpen(false)}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.section
+              className="w-full max-w-md rounded-3xl border border-border/60 bg-background p-5 shadow-2xl sm:p-6"
+              onClick={(event) => event.stopPropagation()}
+              initial={{ opacity: 0, scale: 0.96, y: 18 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 18 }}
+              transition={{ duration: 0.2 }}
+            >
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <Button type="button" variant="ghost" className="h-7 rounded-md px-2 text-[11px]" onClick={clearSymptomSelection}>
+                  <ArrowLeft className="h-3.5 w-3.5" />
+                  Back
+                </Button>
+                <Button type="button" variant="outline" size="icon" className="h-8 w-8 rounded-full" onClick={() => setIsSymptomModalOpen(false)}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+
+              <h3 className="text-lg font-semibold">{selectedSymptom.label}</h3>
+              <p className="mt-1 text-sm text-muted-foreground">{selectedSymptom.followupQuestion}</p>
+
+              <div className="mt-4 space-y-2">
+                {selectedSymptom.intensityOptions.map((option) => (
+                  <Button
+                    key={option.id}
+                    type="button"
+                    variant={selectedIntensity === option.id ? "default" : "outline"}
+                    className="h-9 w-full justify-start rounded-lg px-3 text-xs"
+                    onClick={() => handleIntensitySelect(option.id)}
+                  >
+                    {option.label}
+                  </Button>
+                ))}
+              </div>
+            </motion.section>
+          </motion.div>
+        ) : null}
+
         {isExportModalOpen ? (
           <motion.div
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4"
