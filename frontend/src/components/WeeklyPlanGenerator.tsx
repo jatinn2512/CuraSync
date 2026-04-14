@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { CalendarDays, RefreshCcw, Target } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { ArrowLeft, CalendarDays, RefreshCcw, Target } from "lucide-react";
 import { Button } from "@/components/Button";
 
 type RiskLevel = "Low" | "Medium" | "High";
@@ -231,7 +232,8 @@ const WeeklyPlanGenerator = ({ conditionRisks }: WeeklyPlanGeneratorProps) => {
     return rankedRisks.slice(0, 2);
   }, [rankedRisks]);
 
-  const [mode, setMode] = useState<"auto" | "manual">("auto");
+  const [mode, setMode] = useState<"auto" | "manual" | null>(null);
+  const [flowStep, setFlowStep] = useState<"mode" | "focus" | "plan">("mode");
   const [selectedFocusIds, setSelectedFocusIds] = useState<string[]>([]);
   const [selectedDayIndex, setSelectedDayIndex] = useState(0);
   const [planRows, setPlanRows] = useState<WeeklyPlanRow[]>([]);
@@ -239,27 +241,39 @@ const WeeklyPlanGenerator = ({ conditionRisks }: WeeklyPlanGeneratorProps) => {
   useEffect(() => {
     setSelectedFocusIds((previous) => {
       const availableIds = new Set(rankedRisks.map((risk) => risk.id));
-      const valid = previous.filter((id) => availableIds.has(id));
-      if (valid.length) return valid.slice(0, 2);
-      return autoFocusRisks.map((risk) => risk.id).slice(0, 2);
+      return previous.filter((id) => availableIds.has(id)).slice(0, 2);
     });
-  }, [autoFocusRisks, rankedRisks]);
+  }, [rankedRisks]);
 
   const manualFocusRisks = useMemo(() => {
-    const selected = rankedRisks.filter((risk) => selectedFocusIds.includes(risk.id));
-    return selected.length ? selected : autoFocusRisks;
-  }, [autoFocusRisks, rankedRisks, selectedFocusIds]);
+    return rankedRisks.filter((risk) => selectedFocusIds.includes(risk.id));
+  }, [rankedRisks, selectedFocusIds]);
 
-  const activeFocusRisks = mode === "auto" ? autoFocusRisks : manualFocusRisks;
+  const activeFocusRisks = useMemo(() => {
+    if (mode === "auto") return autoFocusRisks;
+    if (mode === "manual") return manualFocusRisks;
+    return [];
+  }, [autoFocusRisks, manualFocusRisks, mode]);
 
   useEffect(() => {
-    setPlanRows(buildWeeklyPlan(activeFocusRisks));
+    if (!mode) {
+      setPlanRows([]);
+      setSelectedDayIndex(0);
+      return;
+    }
+
+    const focusPool = activeFocusRisks.length ? activeFocusRisks : autoFocusRisks;
+    setPlanRows(buildWeeklyPlan(focusPool));
     setSelectedDayIndex(0);
-  }, [activeFocusRisks]);
+  }, [activeFocusRisks, autoFocusRisks, mode]);
 
   const selectedDay = planRows[selectedDayIndex] ?? null;
+  const displayFocusRisks = activeFocusRisks.length ? activeFocusRisks : autoFocusRisks;
 
-  const overallLevel = useMemo(() => getOverallRiskLevel(activeFocusRisks), [activeFocusRisks]);
+  const overallLevel = useMemo(
+    () => (displayFocusRisks.length ? getOverallRiskLevel(displayFocusRisks) : "Low"),
+    [displayFocusRisks],
+  );
   const levelBadgeClass =
     overallLevel === "High"
       ? "border-red-500/35 bg-red-500/10 text-red-600"
@@ -278,30 +292,84 @@ const WeeklyPlanGenerator = ({ conditionRisks }: WeeklyPlanGeneratorProps) => {
     });
   };
 
+  const handleModeSelect = (nextMode: "auto" | "manual") => {
+    setMode(nextMode);
+    setFlowStep(nextMode === "manual" ? "focus" : "plan");
+  };
+
+  const handleBack = () => {
+    if (flowStep === "plan") {
+      if (mode === "manual") {
+        setFlowStep("focus");
+      } else {
+        setMode(null);
+        setFlowStep("mode");
+      }
+      return;
+    }
+
+    if (flowStep === "focus") {
+      setMode(null);
+      setFlowStep("mode");
+    }
+  };
+
+  const refreshPlan = () => {
+    if (!mode) return;
+    const focusPool = activeFocusRisks.length ? activeFocusRisks : autoFocusRisks;
+    setPlanRows(buildWeeklyPlan(focusPool));
+    setSelectedDayIndex(0);
+  };
+
   return (
     <section className="glass-card rounded-3xl border-border/50 p-6">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-semibold">Weekly Health Plan</h2>
-          <p className="mt-1 text-sm text-muted-foreground">Simple 7-day plan generated locally from your current risk profile.</p>
+          <p className="mt-1 text-sm text-muted-foreground">Choose mode, pick focus, and get a clean day-wise plan.</p>
         </div>
-        <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${levelBadgeClass}`}>Overall {overallLevel}</span>
+        {mode ? (
+          <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${levelBadgeClass}`}>Overall {overallLevel}</span>
+        ) : null}
       </div>
 
-      <div className="rounded-2xl border border-border/60 bg-card/55 p-4">
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Step 1: Focus mode</p>
-        <div className="inline-flex rounded-lg border border-border/60 bg-card/70 p-1">
-          <Button type="button" variant={mode === "auto" ? "default" : "ghost"} className="h-8 rounded-md px-3 text-xs" onClick={() => setMode("auto")}>
-            Auto (Recommended)
-          </Button>
-          <Button type="button" variant={mode === "manual" ? "default" : "ghost"} className="h-8 rounded-md px-3 text-xs" onClick={() => setMode("manual")}>
-            Manual
-          </Button>
-        </div>
+      <AnimatePresence mode="wait">
+        {flowStep === "mode" ? (
+          <motion.div
+            key="mode"
+            className="rounded-2xl border border-border/60 bg-card/55 p-4"
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+          >
+            <div className="inline-flex rounded-lg border border-border/60 bg-card/70 p-1">
+              <Button type="button" variant={mode === "auto" ? "default" : "ghost"} className="h-9 rounded-md px-3 text-xs" onClick={() => handleModeSelect("auto")}>
+                Automatic
+              </Button>
+              <Button type="button" variant={mode === "manual" ? "default" : "ghost"} className="h-9 rounded-md px-3 text-xs" onClick={() => handleModeSelect("manual")}>
+                Manual
+              </Button>
+            </div>
+          </motion.div>
+        ) : null}
 
-        {mode === "manual" ? (
-          <div className="mt-3">
-            <p className="mb-2 text-xs text-muted-foreground">Step 2: Pick up to 2 focus conditions</p>
+        {flowStep === "focus" ? (
+          <motion.div
+            key="focus"
+            className="rounded-2xl border border-border/60 bg-card/55 p-4"
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+          >
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <Button type="button" variant="ghost" className="h-7 rounded-md px-2 text-[11px]" onClick={handleBack}>
+                <ArrowLeft className="h-3.5 w-3.5" />
+                Back
+              </Button>
+              <p className="text-xs text-muted-foreground">Pick up to 2 conditions</p>
+            </div>
             <div className="flex flex-wrap gap-2">
               {rankedRisks.map((risk) => (
                 <Button
@@ -315,63 +383,100 @@ const WeeklyPlanGenerator = ({ conditionRisks }: WeeklyPlanGeneratorProps) => {
                 </Button>
               ))}
             </div>
-          </div>
-        ) : null}
-
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm text-muted-foreground">
-            Focus: <span className="font-semibold text-foreground">{activeFocusRisks.map((risk) => risk.name).join(", ") || "General Health"}</span>
-          </p>
-          <Button type="button" variant="outline" className="h-8 rounded-lg px-3 text-xs" onClick={() => setPlanRows(buildWeeklyPlan(activeFocusRisks))}>
-            <RefreshCcw className="h-3.5 w-3.5" />
-            Refresh Plan
-          </Button>
-        </div>
-      </div>
-
-      <div className="mt-4 rounded-2xl border border-border/60 bg-card/55 p-4">
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Step 3: Pick a day</p>
-        <div className="flex flex-wrap gap-2">
-          {planRows.map((row, index) => (
-            <Button
-              key={`${row.dayLabel}-${row.dateLabel}`}
-              type="button"
-              variant={selectedDayIndex === index ? "default" : "outline"}
-              className="h-8 rounded-lg px-3 text-xs"
-              onClick={() => setSelectedDayIndex(index)}
-            >
-              {row.dayLabel} {row.dateLabel}
-            </Button>
-          ))}
-        </div>
-
-        {selectedDay ? (
-          <article className="mt-3 rounded-xl border border-border/60 bg-card/70 p-4">
-            <p className="mb-2 inline-flex items-center gap-2 text-sm font-semibold">
-              <CalendarDays className="h-4 w-4 text-primary" />
-              {selectedDay.dayLabel} plan
-            </p>
-            <p className="mb-3 inline-flex items-center gap-2 rounded-full border border-primary/35 bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
-              <Target className="h-3.5 w-3.5" />
-              {selectedDay.focusName}
-            </p>
-            <div className="space-y-2 text-sm text-muted-foreground">
-              <p>
-                <span className="font-semibold text-foreground">Food:</span> {selectedDay.food}
+            <div className="mt-3 flex items-center justify-between gap-2">
+              <p className="text-xs text-muted-foreground">
+                Selected:{" "}
+                <span className="font-semibold text-foreground">
+                  {manualFocusRisks.length ? manualFocusRisks.map((risk) => risk.name).join(", ") : "None"}
+                </span>
               </p>
-              <p>
-                <span className="font-semibold text-foreground">Activity:</span> {selectedDay.activity}
-              </p>
-              <p>
-                <span className="font-semibold text-foreground">Check:</span> {selectedDay.check}
-              </p>
-              <p>
-                <span className="font-semibold text-foreground">Caution:</span> {selectedDay.caution}
-              </p>
+              <Button type="button" className="h-8 rounded-lg px-3 text-xs" onClick={() => setFlowStep("plan")} disabled={manualFocusRisks.length === 0}>
+                Continue
+              </Button>
             </div>
-          </article>
+          </motion.div>
         ) : null}
-      </div>
+
+        {flowStep === "plan" ? (
+          <motion.div
+            key="plan"
+            className="rounded-2xl border border-border/60 bg-card/55 p-4"
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+          >
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <Button type="button" variant="ghost" className="h-7 rounded-md px-2 text-[11px]" onClick={handleBack}>
+                  <ArrowLeft className="h-3.5 w-3.5" />
+                  Back
+                </Button>
+                <p className="text-xs text-muted-foreground">
+                  Focus:{" "}
+                  <span className="font-semibold text-foreground">
+                    {displayFocusRisks.map((risk) => risk.name).join(", ") || "General Health"}
+                  </span>
+                </p>
+              </div>
+              <Button type="button" variant="outline" className="h-8 rounded-lg px-3 text-xs" onClick={refreshPlan}>
+                <RefreshCcw className="h-3.5 w-3.5" />
+                Refresh
+              </Button>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {planRows.map((row, index) => (
+                <Button
+                  key={`${row.dayLabel}-${row.dateLabel}`}
+                  type="button"
+                  variant={selectedDayIndex === index ? "default" : "outline"}
+                  className="h-8 rounded-lg px-3 text-xs"
+                  onClick={() => setSelectedDayIndex(index)}
+                >
+                  {row.dayLabel} {row.dateLabel}
+                </Button>
+              ))}
+            </div>
+
+            <AnimatePresence mode="wait">
+              {selectedDay ? (
+                <motion.article
+                  key={`${selectedDay.dayLabel}-${selectedDay.dateLabel}-${selectedDayIndex}`}
+                  className="mt-3 rounded-xl border border-border/60 bg-card/70 p-4"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.18 }}
+                >
+                  <p className="mb-2 inline-flex items-center gap-2 text-sm font-semibold">
+                    <CalendarDays className="h-4 w-4 text-primary" />
+                    {selectedDay.dayLabel} plan
+                  </p>
+                  <p className="mb-3 inline-flex items-center gap-2 rounded-full border border-primary/35 bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
+                    <Target className="h-3.5 w-3.5" />
+                    {selectedDay.focusName}
+                  </p>
+                  <div className="space-y-2 text-sm text-muted-foreground">
+                    <p>
+                      <span className="font-semibold text-foreground">Food:</span> {selectedDay.food}
+                    </p>
+                    <p>
+                      <span className="font-semibold text-foreground">Activity:</span> {selectedDay.activity}
+                    </p>
+                    <p>
+                      <span className="font-semibold text-foreground">Check:</span> {selectedDay.check}
+                    </p>
+                    <p>
+                      <span className="font-semibold text-foreground">Caution:</span> {selectedDay.caution}
+                    </p>
+                  </div>
+                </motion.article>
+              ) : null}
+            </AnimatePresence>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
     </section>
   );
 };
