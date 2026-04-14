@@ -1,10 +1,29 @@
 import { Activity } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
-const footerLinks = {
-  Product: ["Features", "Pricing", "Integrations", "API"],
-  Company: ["About", "Blog", "Careers", "Contact"],
-  Legal: ["Privacy Policy", "Terms of Service", "HIPAA Compliance"],
+type FooterLink = {
+  label: string;
+  path: string;
+};
+
+const footerLinks: Record<string, FooterLink[]> = {
+  Product: [
+    { label: "Features", path: "/about#features" },
+    { label: "Pricing", path: "/pricing" },
+    { label: "Integrations", path: "/about#integrations" },
+    { label: "Developer Docs", path: "/about#developer-docs" },
+  ],
+  Company: [
+    { label: "About", path: "/about#about-curasync" },
+    { label: "Blog", path: "/about#blog" },
+    { label: "Careers", path: "/about#careers" },
+    { label: "Contact", path: "/about#contact" },
+  ],
+  Legal: [
+    { label: "Privacy Policy", path: "/about#privacy-policy" },
+    { label: "Terms of Service", path: "/about#terms-of-service" },
+    { label: "HIPAA Compliance", path: "/about#hipaa-compliance" },
+  ],
 };
 
 const Footer = () => {
@@ -36,10 +55,14 @@ const Footer = () => {
               <h4 className="mb-4 text-sm font-semibold tracking-wide">{heading}</h4>
               <ul className="space-y-2.5">
                 {links.map((link) => (
-                  <li key={link}>
-                    <a href="#" className="text-sm text-muted-foreground transition-colors hover:text-primary">
-                      {link}
-                    </a>
+                  <li key={link.label}>
+                    <button
+                      type="button"
+                      className="text-sm text-muted-foreground transition-colors hover:text-primary"
+                      onClick={() => navigate(link.path)}
+                    >
+                      {link.label}
+                    </button>
                   </li>
                 ))}
               </ul>
