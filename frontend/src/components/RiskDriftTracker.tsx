@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { AlertTriangle, TrendingDown, TrendingUp, UserPlus, Users } from "lucide-react";
 import { Button } from "@/components/Button";
 
@@ -291,6 +292,7 @@ const RiskDriftTracker = () => {
   const [activeProfileId, setActiveProfileId] = useState("self-profile");
   const [checkinsByProfile, setCheckinsByProfile] = useState<Record<string, DailyCheckIn[]>>({});
   const [trendRange, setTrendRange] = useState<"7" | "30">("7");
+  const [activeView, setActiveView] = useState<"profile" | "checkin" | "trend">("profile");
   const [showAddProfile, setShowAddProfile] = useState(false);
   const [showOptionalVitals, setShowOptionalVitals] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
@@ -399,6 +401,7 @@ const RiskDriftTracker = () => {
     setProfiles((previous) => [...previous, profile]);
     setActiveProfileId(profile.id);
     setShowAddProfile(false);
+    setActiveView("checkin");
     setNewProfile({
       name: "",
       relation: "mother",
@@ -453,6 +456,7 @@ const RiskDriftTracker = () => {
     });
 
     setStatusMessage(`Check-in saved for ${activeProfile.name}.`);
+    setActiveView("trend");
   };
 
   return (
@@ -460,269 +464,320 @@ const RiskDriftTracker = () => {
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-semibold">Family Mode + Risk Drift</h2>
-          <p className="mt-1 text-sm text-muted-foreground">Simple 3-step flow: select profile, add check-in, review trend.</p>
+          <p className="mt-1 text-sm text-muted-foreground">Keep it simple: profile, daily check-in, then trend.</p>
         </div>
         <span className="inline-flex rounded-full border border-border/60 bg-card px-3 py-1 text-xs text-muted-foreground">Offline mode</span>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[1fr_1.2fr]">
-        <article className="rounded-2xl border border-border/60 bg-card/55 p-4">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Step 1: Select profile</p>
-          <div className="flex flex-wrap items-center gap-2">
-            <select
-              value={activeProfile?.id ?? ""}
-              onChange={(event) => setActiveProfileId(event.target.value)}
-              className="h-9 min-w-[180px] rounded-lg border border-border/60 bg-card px-3 text-sm outline-none focus:ring-2 focus:ring-primary/25"
-            >
-              {profiles.map((profile) => (
-                <option key={profile.id} value={profile.id}>
-                  {profile.name} ({relationLabelMap[profile.relation]})
-                </option>
-              ))}
-            </select>
-            <Button type="button" variant="outline" className="h-9 rounded-lg px-3 text-xs" onClick={() => setShowAddProfile((prev) => !prev)}>
-              <UserPlus className="h-3.5 w-3.5" />
-              Add profile
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className="h-9 rounded-lg px-3 text-xs"
-              onClick={removeActiveProfile}
-              disabled={!activeProfile || activeProfile.relation === "self"}
-            >
-              Remove
-            </Button>
-          </div>
+      <div className="mb-4 inline-flex rounded-xl border border-border/60 bg-card/60 p-1">
+        <Button type="button" variant={activeView === "profile" ? "default" : "ghost"} className="h-8 rounded-lg px-3 text-xs" onClick={() => setActiveView("profile")}>
+          Profile
+        </Button>
+        <Button type="button" variant={activeView === "checkin" ? "default" : "ghost"} className="h-8 rounded-lg px-3 text-xs" onClick={() => setActiveView("checkin")}>
+          Check-in
+        </Button>
+        <Button type="button" variant={activeView === "trend" ? "default" : "ghost"} className="h-8 rounded-lg px-3 text-xs" onClick={() => setActiveView("trend")}>
+          Trend
+        </Button>
+      </div>
 
-          {activeProfile ? (
-            <div className="mt-3 rounded-xl border border-border/60 bg-card/70 p-3 text-xs text-muted-foreground">
-              <p>
-                <span className="font-semibold text-foreground">Relation:</span> {relationLabelMap[activeProfile.relation]}
-              </p>
-              <p className="mt-1">
-                <span className="font-semibold text-foreground">Age:</span> {activeProfile.age || "N/A"}
-              </p>
-              <p className="mt-1">
-                <span className="font-semibold text-foreground">Baseline:</span> {activeProfile.baseline_conditions || "Not provided"}
-              </p>
+      <AnimatePresence mode="wait">
+        {activeView === "profile" ? (
+          <motion.article
+            key="profile"
+            className="rounded-2xl border border-border/60 bg-card/55 p-4"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.18 }}
+          >
+            <div className="flex flex-wrap items-center gap-2">
+              <select
+                value={activeProfile?.id ?? ""}
+                onChange={(event) => setActiveProfileId(event.target.value)}
+                className="h-9 min-w-[180px] rounded-lg border border-border/60 bg-card px-3 text-sm outline-none focus:ring-2 focus:ring-primary/25"
+              >
+                {profiles.map((profile) => (
+                  <option key={profile.id} value={profile.id}>
+                    {profile.name} ({relationLabelMap[profile.relation]})
+                  </option>
+                ))}
+              </select>
+              <Button type="button" variant="outline" className="h-9 rounded-lg px-3 text-xs" onClick={() => setShowAddProfile((prev) => !prev)}>
+                <UserPlus className="h-3.5 w-3.5" />
+                Add profile
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="h-9 rounded-lg px-3 text-xs"
+                onClick={removeActiveProfile}
+                disabled={!activeProfile || activeProfile.relation === "self"}
+              >
+                Remove
+              </Button>
+              <Button type="button" className="h-9 rounded-lg px-3 text-xs" onClick={() => setActiveView("checkin")}>
+                Next
+              </Button>
             </div>
-          ) : null}
 
-          {showAddProfile ? (
-            <div className="mt-3 space-y-2 rounded-xl border border-border/60 bg-card/70 p-3 text-sm">
-              <input
-                value={newProfile.name}
-                onChange={(event) => setNewProfile((prev) => ({ ...prev, name: event.target.value }))}
-                placeholder="Profile name"
-                className="h-9 w-full rounded-lg border border-border/60 bg-card px-3 text-sm outline-none focus:ring-2 focus:ring-primary/25"
-              />
-              <div className="grid gap-2 sm:grid-cols-2">
-                <select
-                  value={newProfile.relation}
-                  onChange={(event) => setNewProfile((prev) => ({ ...prev, relation: event.target.value as Relation }))}
-                  className="h-9 rounded-lg border border-border/60 bg-card px-2 text-sm outline-none focus:ring-2 focus:ring-primary/25"
-                >
-                  {relationOptions
-                    .filter((option) => option.value !== "self")
-                    .map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                </select>
+            {activeProfile ? (
+              <div className="mt-3 rounded-xl border border-border/60 bg-card/70 p-3 text-xs text-muted-foreground">
+                <p>
+                  <span className="font-semibold text-foreground">Relation:</span> {relationLabelMap[activeProfile.relation]}
+                </p>
+                <p className="mt-1">
+                  <span className="font-semibold text-foreground">Age:</span> {activeProfile.age || "N/A"}
+                </p>
+                <p className="mt-1">
+                  <span className="font-semibold text-foreground">Baseline:</span> {activeProfile.baseline_conditions || "Not provided"}
+                </p>
+              </div>
+            ) : null}
+
+            {showAddProfile ? (
+              <div className="mt-3 space-y-2 rounded-xl border border-border/60 bg-card/70 p-3 text-sm">
+                <input
+                  value={newProfile.name}
+                  onChange={(event) => setNewProfile((prev) => ({ ...prev, name: event.target.value }))}
+                  placeholder="Profile name"
+                  className="h-9 w-full rounded-lg border border-border/60 bg-card px-3 text-sm outline-none focus:ring-2 focus:ring-primary/25"
+                />
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <select
+                    value={newProfile.relation}
+                    onChange={(event) => setNewProfile((prev) => ({ ...prev, relation: event.target.value as Relation }))}
+                    className="h-9 rounded-lg border border-border/60 bg-card px-2 text-sm outline-none focus:ring-2 focus:ring-primary/25"
+                  >
+                    {relationOptions
+                      .filter((option) => option.value !== "self")
+                      .map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                  </select>
+                  <input
+                    type="number"
+                    min={0}
+                    value={newProfile.age}
+                    onChange={(event) => setNewProfile((prev) => ({ ...prev, age: event.target.value }))}
+                    placeholder="Age"
+                    className="h-9 rounded-lg border border-border/60 bg-card px-3 text-sm outline-none focus:ring-2 focus:ring-primary/25"
+                  />
+                </div>
+                <input
+                  value={newProfile.baseline_conditions}
+                  onChange={(event) => setNewProfile((prev) => ({ ...prev, baseline_conditions: event.target.value }))}
+                  placeholder="Baseline conditions (optional)"
+                  className="h-9 w-full rounded-lg border border-border/60 bg-card px-3 text-sm outline-none focus:ring-2 focus:ring-primary/25"
+                />
+                <label className="inline-flex items-center gap-2 text-xs text-muted-foreground">
+                  <input
+                    type="checkbox"
+                    checked={newProfile.consent_flag}
+                    onChange={(event) => setNewProfile((prev) => ({ ...prev, consent_flag: event.target.checked }))}
+                  />
+                  Consent available
+                </label>
+                <Button type="button" className="h-8 rounded-lg px-3 text-xs" onClick={addProfile}>
+                  <Users className="h-3.5 w-3.5" />
+                  Save profile
+                </Button>
+              </div>
+            ) : null}
+          </motion.article>
+        ) : null}
+
+        {activeView === "checkin" ? (
+          <motion.article
+            key="checkin"
+            className="rounded-2xl border border-border/60 bg-card/55 p-4"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.18 }}
+          >
+            <p className="mb-3 text-sm text-muted-foreground">
+              Active profile: <span className="font-semibold text-foreground">{activeProfile?.name ?? "None"}</span>
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="space-y-1 text-xs text-muted-foreground">
+                <span>Sleep hours</span>
                 <input
                   type="number"
                   min={0}
-                  value={newProfile.age}
-                  onChange={(event) => setNewProfile((prev) => ({ ...prev, age: event.target.value }))}
-                  placeholder="Age"
-                  className="h-9 rounded-lg border border-border/60 bg-card px-3 text-sm outline-none focus:ring-2 focus:ring-primary/25"
+                  step={0.5}
+                  value={checkinForm.sleep_hours}
+                  onChange={(event) => setCheckinForm((prev) => ({ ...prev, sleep_hours: event.target.value }))}
+                  className="h-9 w-full rounded-lg border border-border/60 bg-card px-3 text-sm outline-none focus:ring-2 focus:ring-primary/25"
                 />
-              </div>
-              <input
-                value={newProfile.baseline_conditions}
-                onChange={(event) => setNewProfile((prev) => ({ ...prev, baseline_conditions: event.target.value }))}
-                placeholder="Baseline conditions (optional)"
-                className="h-9 w-full rounded-lg border border-border/60 bg-card px-3 text-sm outline-none focus:ring-2 focus:ring-primary/25"
-              />
-              <label className="inline-flex items-center gap-2 text-xs text-muted-foreground">
-                <input
-                  type="checkbox"
-                  checked={newProfile.consent_flag}
-                  onChange={(event) => setNewProfile((prev) => ({ ...prev, consent_flag: event.target.checked }))}
-                />
-                Consent available
               </label>
-              <Button type="button" className="h-8 rounded-lg px-3 text-xs" onClick={addProfile}>
-                <Users className="h-3.5 w-3.5" />
-                Save profile
+              <label className="space-y-1 text-xs text-muted-foreground">
+                <span>Steps</span>
+                <input
+                  type="number"
+                  min={0}
+                  value={checkinForm.steps}
+                  onChange={(event) => setCheckinForm((prev) => ({ ...prev, steps: event.target.value }))}
+                  className="h-9 w-full rounded-lg border border-border/60 bg-card px-3 text-sm outline-none focus:ring-2 focus:ring-primary/25"
+                />
+              </label>
+            </div>
+
+            <div className="mt-3">
+              <p className="mb-1 text-xs text-muted-foreground">Stress level</p>
+              <div className="inline-flex rounded-lg border border-border/60 bg-card/70 p-1">
+                {(["low", "medium", "high"] as StressLevel[]).map((level) => (
+                  <Button
+                    key={level}
+                    type="button"
+                    variant={checkinForm.stress_level === level ? "default" : "ghost"}
+                    className="h-7 rounded-md px-3 text-[11px]"
+                    onClick={() => setCheckinForm((prev) => ({ ...prev, stress_level: level }))}
+                  >
+                    {level}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-3">
+              <Button type="button" variant="outline" className="h-7 rounded-md px-3 text-[11px]" onClick={() => setShowOptionalVitals((prev) => !prev)}>
+                {showOptionalVitals ? "Hide optional vitals" : "Add optional vitals"}
+              </Button>
+              {showOptionalVitals ? (
+                <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                  <label className="space-y-1 text-xs text-muted-foreground">
+                    <span>Fasting sugar</span>
+                    <input
+                      type="number"
+                      min={0}
+                      value={checkinForm.fasting_sugar}
+                      onChange={(event) => setCheckinForm((prev) => ({ ...prev, fasting_sugar: event.target.value }))}
+                      className="h-9 w-full rounded-lg border border-border/60 bg-card px-3 text-sm outline-none focus:ring-2 focus:ring-primary/25"
+                    />
+                  </label>
+                  <label className="space-y-1 text-xs text-muted-foreground">
+                    <span>Systolic BP</span>
+                    <input
+                      type="number"
+                      min={0}
+                      value={checkinForm.systolic_bp}
+                      onChange={(event) => setCheckinForm((prev) => ({ ...prev, systolic_bp: event.target.value }))}
+                      className="h-9 w-full rounded-lg border border-border/60 bg-card px-3 text-sm outline-none focus:ring-2 focus:ring-primary/25"
+                    />
+                  </label>
+                </div>
+              ) : null}
+            </div>
+
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button type="button" className="h-9 rounded-lg px-4 text-xs" onClick={submitCheckIn}>
+                Save today check-in
+              </Button>
+              <Button type="button" variant="outline" className="h-9 rounded-lg px-4 text-xs" onClick={() => setActiveView("trend")}>
+                View trend
               </Button>
             </div>
-          ) : null}
-        </article>
+          </motion.article>
+        ) : null}
 
-        <article className="rounded-2xl border border-border/60 bg-card/55 p-4">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Step 2: Daily check-in</p>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="space-y-1 text-xs text-muted-foreground">
-              <span>Sleep hours</span>
-              <input
-                type="number"
-                min={0}
-                step={0.5}
-                value={checkinForm.sleep_hours}
-                onChange={(event) => setCheckinForm((prev) => ({ ...prev, sleep_hours: event.target.value }))}
-                className="h-9 w-full rounded-lg border border-border/60 bg-card px-3 text-sm outline-none focus:ring-2 focus:ring-primary/25"
-              />
-            </label>
-            <label className="space-y-1 text-xs text-muted-foreground">
-              <span>Steps</span>
-              <input
-                type="number"
-                min={0}
-                value={checkinForm.steps}
-                onChange={(event) => setCheckinForm((prev) => ({ ...prev, steps: event.target.value }))}
-                className="h-9 w-full rounded-lg border border-border/60 bg-card px-3 text-sm outline-none focus:ring-2 focus:ring-primary/25"
-              />
-            </label>
-          </div>
-
-          <div className="mt-3">
-            <p className="mb-1 text-xs text-muted-foreground">Stress level</p>
-            <div className="inline-flex rounded-lg border border-border/60 bg-card/70 p-1">
-              {(["low", "medium", "high"] as StressLevel[]).map((level) => (
-                <Button
-                  key={level}
-                  type="button"
-                  variant={checkinForm.stress_level === level ? "default" : "ghost"}
-                  className="h-7 rounded-md px-3 text-[11px]"
-                  onClick={() => setCheckinForm((prev) => ({ ...prev, stress_level: level }))}
-                >
-                  {level}
+        {activeView === "trend" ? (
+          <motion.article
+            key="trend"
+            className="rounded-2xl border border-border/60 bg-card/55 p-4"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.18 }}
+          >
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <div className="inline-flex rounded-lg border border-border/60 bg-card/70 p-1">
+                <Button type="button" variant={trendRange === "7" ? "default" : "ghost"} className="h-7 rounded-md px-3 text-[11px]" onClick={() => setTrendRange("7")}>
+                  Last 7 days
                 </Button>
-              ))}
-            </div>
-          </div>
-
-          <div className="mt-3">
-            <Button type="button" variant="outline" className="h-7 rounded-md px-3 text-[11px]" onClick={() => setShowOptionalVitals((prev) => !prev)}>
-              {showOptionalVitals ? "Hide optional vitals" : "Add optional vitals"}
-            </Button>
-            {showOptionalVitals ? (
-              <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                <label className="space-y-1 text-xs text-muted-foreground">
-                  <span>Fasting sugar</span>
-                  <input
-                    type="number"
-                    min={0}
-                    value={checkinForm.fasting_sugar}
-                    onChange={(event) => setCheckinForm((prev) => ({ ...prev, fasting_sugar: event.target.value }))}
-                    className="h-9 w-full rounded-lg border border-border/60 bg-card px-3 text-sm outline-none focus:ring-2 focus:ring-primary/25"
-                  />
-                </label>
-                <label className="space-y-1 text-xs text-muted-foreground">
-                  <span>Systolic BP</span>
-                  <input
-                    type="number"
-                    min={0}
-                    value={checkinForm.systolic_bp}
-                    onChange={(event) => setCheckinForm((prev) => ({ ...prev, systolic_bp: event.target.value }))}
-                    className="h-9 w-full rounded-lg border border-border/60 bg-card px-3 text-sm outline-none focus:ring-2 focus:ring-primary/25"
-                  />
-                </label>
+                <Button type="button" variant={trendRange === "30" ? "default" : "ghost"} className="h-7 rounded-md px-3 text-[11px]" onClick={() => setTrendRange("30")}>
+                  Last 30 days
+                </Button>
               </div>
-            ) : null}
-          </div>
-
-          <Button type="button" className="mt-3 h-9 rounded-lg px-4 text-xs" onClick={submitCheckIn}>
-            Save today check-in
-          </Button>
-          {statusMessage ? <p className="mt-2 text-xs text-muted-foreground">{statusMessage}</p> : null}
-        </article>
-      </div>
-
-      <article className="mt-4 rounded-2xl border border-border/60 bg-card/55 p-4">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Step 3: Trend view</p>
-          <div className="inline-flex rounded-lg border border-border/60 bg-card/70 p-1">
-            <Button type="button" variant={trendRange === "7" ? "default" : "ghost"} className="h-7 rounded-md px-3 text-[11px]" onClick={() => setTrendRange("7")}>
-              Last 7 days
-            </Button>
-            <Button type="button" variant={trendRange === "30" ? "default" : "ghost"} className="h-7 rounded-md px-3 text-[11px]" onClick={() => setTrendRange("30")}>
-              Last 30 days
-            </Button>
-          </div>
-        </div>
-
-        {chartRows.length ? (
-          <>
-            <div className="mb-3 grid gap-2 sm:grid-cols-3">
-              <div className="rounded-xl border border-border/60 bg-card/70 p-3">
-                <p className="text-[11px] text-muted-foreground">Latest score</p>
-                <p className="text-lg font-semibold">{drift.latestScore.toFixed(1)}</p>
-              </div>
-              <div className="rounded-xl border border-border/60 bg-card/70 p-3">
-                <p className="text-[11px] text-muted-foreground">Drift vs baseline</p>
-                <p className={`text-lg font-semibold ${drift.latestDrift > 0 ? "text-red-600" : drift.latestDrift < 0 ? "text-emerald-700" : ""}`}>
-                  {drift.latestDrift >= 0 ? "+" : ""}
-                  {drift.latestDrift.toFixed(1)}
-                </p>
-              </div>
-              <div className="rounded-xl border border-border/60 bg-card/70 p-3">
-                <p className="text-[11px] text-muted-foreground">Trend</p>
-                <p className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-semibold ${trendBadgeClass}`}>
-                  {drift.trendLabel === "Improving" ? <TrendingDown className="h-3.5 w-3.5" /> : drift.trendLabel === "Worsening" ? <TrendingUp className="h-3.5 w-3.5" /> : <AlertTriangle className="h-3.5 w-3.5" />}
-                  {drift.trendLabel}
-                </p>
-              </div>
+              <Button type="button" variant="outline" className="h-7 rounded-md px-3 text-[11px]" onClick={() => setActiveView("checkin")}>
+                Add check-in
+              </Button>
             </div>
 
-            <div className="relative overflow-hidden rounded-xl border border-border/60 bg-gradient-to-b from-card/75 to-card/45 p-3">
-              <div className="pointer-events-none absolute inset-0 opacity-45 [background-image:linear-gradient(to_top,hsl(var(--border))_1px,transparent_1px)] [background-size:100%_25%]" />
-              <div className="relative flex h-48 items-end gap-1">
-                {chartRows.map((row) => (
-                  <div key={`${row.date}-${row.score}`} className="flex h-full flex-1 flex-col justify-end">
-                    <div
-                      className={`min-h-2 rounded-t-md shadow-[0_8px_14px_-12px_rgba(15,23,42,0.9)] ${
-                        row.drift > 0 ? "bg-gradient-to-t from-red-500/60 to-red-500/85" : row.drift < 0 ? "bg-gradient-to-t from-emerald-500/60 to-emerald-500/85" : "bg-gradient-to-t from-amber-500/60 to-amber-500/85"
-                      }`}
-                      style={{ height: `${Math.max((row.score / maxChartScore) * 100, 8)}%` }}
-                    />
+            {chartRows.length ? (
+              <>
+                <div className="mb-3 grid gap-2 sm:grid-cols-3">
+                  <div className="rounded-xl border border-border/60 bg-card/70 p-3">
+                    <p className="text-[11px] text-muted-foreground">Latest score</p>
+                    <p className="text-lg font-semibold">{drift.latestScore.toFixed(1)}</p>
                   </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="mt-3 grid gap-3 md:grid-cols-2">
-              <div className="rounded-xl border border-border/60 bg-card/70 p-3 text-xs text-muted-foreground">
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide">Top factors this week</p>
-                {drift.topFactors.length ? (
-                  drift.topFactors.map((factor) => (
-                    <p key={factor.key}>
-                      <span className="font-semibold text-foreground">{factor.label}:</span> +{factor.value.toFixed(1)} points
+                  <div className="rounded-xl border border-border/60 bg-card/70 p-3">
+                    <p className="text-[11px] text-muted-foreground">Drift vs baseline</p>
+                    <p className={`text-lg font-semibold ${drift.latestDrift > 0 ? "text-red-600" : drift.latestDrift < 0 ? "text-emerald-700" : ""}`}>
+                      {drift.latestDrift >= 0 ? "+" : ""}
+                      {drift.latestDrift.toFixed(1)}
                     </p>
-                  ))
-                ) : (
-                  <p>No worsening factors detected this week.</p>
-                )}
+                  </div>
+                  <div className="rounded-xl border border-border/60 bg-card/70 p-3">
+                    <p className="text-[11px] text-muted-foreground">Trend</p>
+                    <p className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-semibold ${trendBadgeClass}`}>
+                      {drift.trendLabel === "Improving" ? <TrendingDown className="h-3.5 w-3.5" /> : drift.trendLabel === "Worsening" ? <TrendingUp className="h-3.5 w-3.5" /> : <AlertTriangle className="h-3.5 w-3.5" />}
+                      {drift.trendLabel}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="relative overflow-hidden rounded-xl border border-border/60 bg-gradient-to-b from-card/75 to-card/45 p-3">
+                  <div className="pointer-events-none absolute inset-0 opacity-45 [background-image:linear-gradient(to_top,hsl(var(--border))_1px,transparent_1px)] [background-size:100%_25%]" />
+                  <div className="relative flex h-48 items-end gap-1">
+                    {chartRows.map((row) => (
+                      <div key={`${row.date}-${row.score}`} className="flex h-full flex-1 flex-col justify-end">
+                        <div
+                          className={`min-h-2 rounded-t-md shadow-[0_8px_14px_-12px_rgba(15,23,42,0.9)] ${
+                            row.drift > 0 ? "bg-gradient-to-t from-red-500/60 to-red-500/85" : row.drift < 0 ? "bg-gradient-to-t from-emerald-500/60 to-emerald-500/85" : "bg-gradient-to-t from-amber-500/60 to-amber-500/85"
+                          }`}
+                          style={{ height: `${Math.max((row.score / maxChartScore) * 100, 8)}%` }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="mt-3 grid gap-3 md:grid-cols-2">
+                  <div className="rounded-xl border border-border/60 bg-card/70 p-3 text-xs text-muted-foreground">
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide">Top factors this week</p>
+                    {drift.topFactors.length ? (
+                      drift.topFactors.map((factor) => (
+                        <p key={factor.key}>
+                          <span className="font-semibold text-foreground">{factor.label}:</span> +{factor.value.toFixed(1)} points
+                        </p>
+                      ))
+                    ) : (
+                      <p>No worsening factors detected this week.</p>
+                    )}
+                  </div>
+                  <div className="rounded-xl border border-border/60 bg-card/70 p-3 text-xs text-muted-foreground">
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide">Recent check-ins</p>
+                    {activeCheckins.slice(0, 3).map((entry) => (
+                      <p key={entry.id}>
+                        {new Date(entry.date).toLocaleDateString("en-US", { day: "numeric", month: "short" })}: {entry.sleep_hours}h, {entry.steps} steps, stress {entry.stress_level}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="rounded-xl border border-dashed border-border/70 bg-card/60 p-4 text-sm text-muted-foreground">
+                Save a daily check-in to unlock trend insights.
               </div>
-              <div className="rounded-xl border border-border/60 bg-card/70 p-3 text-xs text-muted-foreground">
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide">Recent check-ins</p>
-                {activeCheckins.slice(0, 3).map((entry) => (
-                  <p key={entry.id}>
-                    {new Date(entry.date).toLocaleDateString("en-US", { day: "numeric", month: "short" })}: {entry.sleep_hours}h, {entry.steps} steps, stress {entry.stress_level}
-                  </p>
-                ))}
-              </div>
-            </div>
-          </>
-        ) : (
-          <div className="rounded-xl border border-dashed border-border/70 bg-card/60 p-4 text-sm text-muted-foreground">
-            Save a daily check-in to unlock trend insights.
-          </div>
-        )}
-      </article>
+            )}
+          </motion.article>
+        ) : null}
+      </AnimatePresence>
+
+      {statusMessage ? <p className="mt-3 text-xs text-muted-foreground">{statusMessage}</p> : null}
     </section>
   );
 };
